@@ -1,0 +1,49 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{935B8DFD-9519-4089-B605-52D0596AC623}|NuGetInspectorApp\\NuGetInspectorApp.csproj|c:\\users\\rofli\\iclouddrive\\source\\nugetinspectorapp\\nugetinspectorapp\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{935B8DFD-9519-4089-B605-52D0596AC623}|NuGetInspectorApp\\NuGetInspectorApp.csproj|solutionrelative:nugetinspectorapp\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp\\Program.cs",
+              "RelativeDocumentMoniker": "NuGetInspectorApp\\Program.cs",
+              "ToolTip": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp\\Program.cs",
+              "RelativeToolTip": "NuGetInspectorApp\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-16T21:54:56.958Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{d84ee353-0bef-5a41-a649-8f89aca5d84d}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

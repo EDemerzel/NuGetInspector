@@ -1,0 +1,243 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>NuGetInspectorApp</name>
+    </assembly>
+    <members>
+        <member name="T:NuGetInspectorApp.Configuration.AppConfiguration">
+            <summary>
+            Configuration settings for the NuGet Inspector application.
+            </summary>
+        </member>
+        <member name="P:NuGetInspectorApp.Configuration.AppConfiguration.NuGetApiBaseUrl">
+            <summary>
+            Gets or sets the base URL for the NuGet API registration endpoint.
+            </summary>
+            <value>The NuGet API base URL. Default is "https://api.nuget.org/v3/registration5-gz-semver2".</value>
+        </member>
+        <member name="P:NuGetInspectorApp.Configuration.AppConfiguration.NuGetGalleryBaseUrl">
+            <summary>
+            Gets or sets the base URL for the NuGet Gallery.
+            </summary>
+            <value>The NuGet Gallery base URL. Default is "https://www.nuget.org/packages".</value>
+        </member>
+        <member name="P:NuGetInspectorApp.Configuration.AppConfiguration.MaxConcurrentRequests">
+            <summary>
+            Gets or sets the maximum number of concurrent HTTP requests allowed.
+            </summary>
+            <value>The maximum concurrent requests. Default is 5.</value>
+        </member>
+        <member name="P:NuGetInspectorApp.Configuration.AppConfiguration.HttpTimeoutSeconds">
+            <summary>
+            Gets or sets the HTTP request timeout in seconds.
+            </summary>
+            <value>The HTTP timeout in seconds. Default is 30.</value>
+        </member>
+        <member name="P:NuGetInspectorApp.Configuration.AppConfiguration.VerboseLogging">
+            <summary>
+            Gets or sets a value indicating whether verbose logging is enabled.
+            </summary>
+            <value><c>true</c> if verbose logging is enabled; otherwise, <c>false</c>. Default is <c>false</c>.</value>
+        </member>
+        <member name="T:NuGetInspectorApp.Configuration.CommandLineOptions">
+            <summary>
+            Represents command line options for the NuGet Inspector application.
+            </summary>
+        </member>
+        <member name="P:NuGetInspectorApp.Configuration.CommandLineOptions.SolutionPath">
+            <summary>
+            Gets or sets the path to the solution file to analyze.
+            </summary>
+            <value>The solution file path.</value>
+        </member>
+        <member name="P:NuGetInspectorApp.Configuration.CommandLineOptions.OutputFormat">
+            <summary>
+            Gets or sets the output format for the report.
+            </summary>
+            <value>The output format. Supported values: console, html, markdown, json. Default is "console".</value>
+        </member>
+        <member name="P:NuGetInspectorApp.Configuration.CommandLineOptions.OutputFile">
+            <summary>
+            Gets or sets the output file path for saving the report.
+            </summary>
+            <value>The output file path, or <c>null</c> to output to console.</value>
+        </member>
+        <member name="P:NuGetInspectorApp.Configuration.CommandLineOptions.VerboseOutput">
+            <summary>
+            Gets or sets a value indicating whether verbose output is enabled.
+            </summary>
+            <value><c>true</c> if verbose output is enabled; otherwise, <c>false</c>. Default is <c>false</c>.</value>
+        </member>
+        <member name="P:NuGetInspectorApp.Configuration.CommandLineOptions.OnlyOutdated">
+            <summary>
+            Gets or sets a value indicating whether to show only outdated packages.
+            </summary>
+            <value><c>true</c> to show only outdated packages; otherwise, <c>false</c>. Default is <c>false</c>.</value>
+        </member>
+        <member name="P:NuGetInspectorApp.Configuration.CommandLineOptions.OnlyVulnerable">
+            <summary>
+            Gets or sets a value indicating whether to show only vulnerable packages.
+            </summary>
+            <value><c>true</c> to show only vulnerable packages; otherwise, <c>false</c>. Default is <c>false</c>.</value>
+        </member>
+        <member name="P:NuGetInspectorApp.Configuration.CommandLineOptions.OnlyDeprecated">
+            <summary>
+            Gets or sets a value indicating whether to show only deprecated packages.
+            </summary>
+            <value><c>true</c> to show only deprecated packages; otherwise, <c>false</c>. Default is <c>false</c>.</value>
+        </member>
+        <member name="T:NuGetInspectorApp.Formatters.ConsoleReportFormatter">
+            <summary>
+            Provides console-friendly formatting for package analysis reports.
+            </summary>
+            <remarks>
+            This formatter generates human-readable text output suitable for console display,
+            with clear hierarchical structure and detailed package information including
+            dependencies, vulnerabilities, and deprecation status.
+            </remarks>
+        </member>
+        <member name="M:NuGetInspectorApp.Formatters.ConsoleReportFormatter.FormatReportAsync(System.Collections.Generic.List{NuGetInspectorApp.Models.ProjectInfo},System.Collections.Generic.Dictionary{System.String,System.Collections.Generic.Dictionary{System.String,NuGetInspectorApp.Models.MergedPackage}},System.Collections.Generic.Dictionary{System.String,NuGetInspectorApp.Models.PackageMetadata},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:NuGetInspectorApp.Formatters.ConsoleReportFormatter.FormatDirectPackages(System.Text.StringBuilder,System.Collections.Generic.Dictionary{System.String,NuGetInspectorApp.Models.MergedPackage},System.Collections.Generic.Dictionary{System.String,NuGetInspectorApp.Models.PackageMetadata})">
+            <summary>
+            Formats direct package dependencies for the console output.
+            </summary>
+            <param name="sb">The StringBuilder to append formatted output to.</param>
+            <param name="merged">The collection of merged packages to format.</param>
+            <param name="packageMetadata">The package metadata dictionary for additional details.</param>
+        </member>
+        <member name="M:NuGetInspectorApp.Formatters.ConsoleReportFormatter.FormatVersionInformation(System.Text.StringBuilder,NuGetInspectorApp.Models.MergedPackage)">
+            <summary>
+            Formats version information for a package.
+            </summary>
+            <param name="sb">The StringBuilder to append formatted output to.</param>
+            <param name="pkg">The package to format version information for.</param>
+        </member>
+        <member name="M:NuGetInspectorApp.Formatters.ConsoleReportFormatter.FormatDeprecationInformation(System.Text.StringBuilder,NuGetInspectorApp.Models.MergedPackage)">
+            <summary>
+            Formats deprecation information for a package.
+            </summary>
+            <param name="sb">The StringBuilder to append formatted output to.</param>
+            <param name="pkg">The package to format deprecation information for.</param>
+        </member>
+        <member name="M:NuGetInspectorApp.Formatters.ConsoleReportFormatter.FormatVulnerabilityInformation(System.Text.StringBuilder,NuGetInspectorApp.Models.MergedPackage)">
+            <summary>
+            Formats vulnerability information for a package.
+            </summary>
+            <param name="sb">The StringBuilder to append formatted output to.</param>
+            <param name="pkg">The package to format vulnerability information for.</param>
+        </member>
+        <member name="M:NuGetInspectorApp.Formatters.ConsoleReportFormatter.FormatDependencyInformation(System.Text.StringBuilder,NuGetInspectorApp.Models.MergedPackage,System.Collections.Generic.Dictionary{System.String,NuGetInspectorApp.Models.PackageMetadata},System.String)">
+            <summary>
+            Formats dependency information for a package.
+            </summary>
+            <param name="sb">The StringBuilder to append formatted output to.</param>
+            <param name="pkg">The package to format dependency information for.</param>
+            <param name="packageMetadata">The package metadata dictionary.</param>
+            <param name="metaKey">The metadata key for the current package.</param>
+        </member>
+        <member name="M:NuGetInspectorApp.Formatters.ConsoleReportFormatter.FormatTransitivePackages(System.Text.StringBuilder,NuGetInspectorApp.Models.FrameworkInfo)">
+            <summary>
+            Formats transitive package information for a framework.
+            </summary>
+            <param name="sb">The StringBuilder to append formatted output to.</param>
+            <param name="fw">The framework containing transitive packages.</param>
+        </member>
+        <member name="T:NuGetInspectorApp.Formatters.IReportFormatter">
+            <summary>
+            Defines the contract for formatting package analysis reports into different output formats.
+            </summary>
+            <remarks>
+            Implementations of this interface are responsible for taking the raw package analysis data
+            and converting it into a human-readable or machine-readable format. The formatter receives
+            project information, merged package data, and detailed package metadata to create comprehensive reports.
+            </remarks>
+        </member>
+        <member name="M:NuGetInspectorApp.Formatters.IReportFormatter.FormatReportAsync(System.Collections.Generic.List{NuGetInspectorApp.Models.ProjectInfo},System.Collections.Generic.Dictionary{System.String,System.Collections.Generic.Dictionary{System.String,NuGetInspectorApp.Models.MergedPackage}},System.Collections.Generic.Dictionary{System.String,NuGetInspectorApp.Models.PackageMetadata},System.Threading.CancellationToken)">
+            <summary>
+            Asynchronously formats a package analysis report based on the provided data.
+            </summary>
+            <param name="projects">The collection of projects analyzed, containing framework and package information.</param>
+            <param name="mergedPackages">
+            A dictionary of merged package information keyed by "{ProjectPath}|{Framework}",
+            with values being dictionaries of packages keyed by package ID.
+            </param>
+            <param name="packageMetadata">
+            A dictionary of detailed package metadata keyed by "{PackageId}|{Version}",
+            containing additional information fetched from the NuGet API.
+            </param>
+            <param name="cancellationToken">A cancellation token to cancel the formatting operation.</param>
+            <returns>
+            A task that represents the asynchronous formatting operation.
+            The task result contains the formatted report as a string.
+            </returns>
+            <exception cref="T:System.ArgumentNullException">
+            Thrown when <paramref name="projects"/>, <paramref name="mergedPackages"/>, 
+            or <paramref name="packageMetadata"/> is null.
+            </exception>
+            <exception cref="T:System.OperationCanceledException">
+            Thrown when the operation is cancelled via the <paramref name="cancellationToken"/>.
+            </exception>
+            <example>
+            <code>
+            var formatter = new ConsoleReportFormatter();
+            var report = await formatter.FormatReportAsync(projects, mergedPackages, metadata);
+            Console.WriteLine(report);
+            </code>
+            </example>
+        </member>
+        <member name="T:NuGetInspectorApp.Services.INuGetApiService">
+            <summary>
+            Provides methods for fetching package metadata from the NuGet API.
+            </summary>
+        </member>
+        <member name="M:NuGetInspectorApp.Services.INuGetApiService.FetchPackageMetadataAsync(System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Fetches metadata for a specific package version from the NuGet API.
+            </summary>
+            <param name="id">The package ID.</param>
+            <param name="version">The package version.</param>
+            <param name="cancellationToken">A cancellation token to cancel the operation.</param>
+            <returns>A task that represents the asynchronous operation. The task result contains the package metadata.</returns>
+            <exception cref="T:System.ArgumentException">Thrown when <paramref name="id"/> or <paramref name="version"/> is null or empty.</exception>
+            <exception cref="T:System.Net.Http.HttpRequestException">Thrown when the HTTP request fails.</exception>
+        </member>
+        <member name="T:NuGetInspectorApp.Services.NuGetApiService">
+            <summary>
+            Implements the NuGet API service for fetching package metadata.
+            </summary>
+        </member>
+        <member name="M:NuGetInspectorApp.Services.NuGetApiService.#ctor(NuGetInspectorApp.Configuration.AppConfiguration,Microsoft.Extensions.Logging.ILogger{NuGetInspectorApp.Services.NuGetApiService})">
+            <summary>
+            Initializes a new instance of the <see cref="T:NuGetInspectorApp.Services.NuGetApiService"/> class.
+            </summary>
+            <param name="configuration">The application configuration.</param>
+            <param name="logger">The logger instance.</param>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="configuration"/> or <paramref name="logger"/> is null.</exception>
+        </member>
+        <member name="M:NuGetInspectorApp.Services.NuGetApiService.FetchPackageMetadataAsync(System.String,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:NuGetInspectorApp.Services.NuGetApiService.ExtractProjectUrl(NuGetInspectorApp.Models.PackageMetadata,System.Text.Json.JsonElement,System.Text.Json.JsonElement)">
+            <summary>
+            Extracts the project URL from the package metadata.
+            </summary>
+            <param name="meta">The package metadata to update.</param>
+            <param name="details">The details JSON element.</param>
+            <param name="root">The root JSON element.</param>
+        </member>
+        <member name="M:NuGetInspectorApp.Services.NuGetApiService.ExtractDependencyGroups(NuGetInspectorApp.Models.PackageMetadata,System.Text.Json.JsonElement)">
+            <summary>
+            Extracts dependency groups from the package metadata.
+            </summary>
+            <param name="meta">The package metadata to update.</param>
+            <param name="details">The details JSON element containing dependency information.</param>
+        </member>
+        <member name="M:NuGetInspectorApp.Services.NuGetApiService.Dispose">
+            <summary>
+            Releases all resources used by the <see cref="T:NuGetInspectorApp.Services.NuGetApiService"/>.
+            </summary>
+        </member>
+    </members>
+</doc>

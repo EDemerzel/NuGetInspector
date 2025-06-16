@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "NuGetInspectorApp": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
