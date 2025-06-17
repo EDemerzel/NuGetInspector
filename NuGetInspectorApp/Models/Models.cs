@@ -12,6 +12,27 @@ namespace NuGetInspectorApp.Models
     public class DotnetListReport
     {
         /// <summary>
+        /// Gets or sets the schema version of the report format.
+        /// </summary>
+        /// <value>The version number of the JSON report schema.</value>
+        [JsonPropertyName("version")]
+        public int Version { get; set; }
+
+        /// <summary>
+        /// Gets or sets the command-line parameters used to generate the report.
+        /// </summary>
+        /// <value>The parameters passed to the dotnet list package command.</value>
+        [JsonPropertyName("parameters")]
+        public string? Parameters { get; set; }
+
+        /// <summary>
+        /// Gets or sets the list of NuGet package sources used for the report.
+        /// </summary>
+        /// <value>A list of package source URLs.</value>
+        [JsonPropertyName("sources")]
+        public List<string>? Sources { get; set; }
+
+        /// <summary>
         /// Gets or sets the collection of projects included in the report.
         /// </summary>
         /// <value>A list of <see cref="ProjectInfo"/> objects representing each project in the solution, or <c>null</c> if no projects are found.</value>

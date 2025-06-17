@@ -1,10 +1,9 @@
-# Always have LF line endings on checkout.
-*.yml text eol=lf
-*.yaml text eol=lf
-*.sh text eol=lf
-CODEOWNERS text eol=lf
+# Set LF as the default line ending for text files.
+# Git will auto-detect text files. For those it identifies as text, it will normalize to LF.
+# Files explicitly marked as binary or with a different eol will override this.
+* text=auto eol=lf
 
-# .NET specific files
+# .NET specific files - explicitly marked as text, will use default LF
 *.cs text diff=csharp
 *.csx text diff=csharp
 *.vb text
@@ -12,7 +11,7 @@ CODEOWNERS text eol=lf
 *.fsx text
 *.fsi text
 
-# Project and solution files
+# Project and solution files - explicitly marked as text, will use default LF
 *.csproj text
 *.vbproj text
 *.fsproj text
@@ -26,9 +25,10 @@ CODEOWNERS text eol=lf
 *.props text
 *.targets text
 *.resx text eol=crlf
+# Keep CRLF for .resx files for Visual Studio compatibility
 *.settings text
 
-# Package and dependency files
+# Package and dependency files - explicitly marked as text, will use default LF
 *.nuspec text
 packages.config text
 Directory.Build.props text
@@ -47,7 +47,7 @@ paket.lock text
 *.docx binary
 *.pdf binary
 
-# Web files
+# Web files - explicitly marked as text, will use default LF
 *.html text
 *.htm text
 *.css text
@@ -59,26 +59,48 @@ paket.lock text
 *.jsx text
 *.tsx text
 *.vue text
+*.svg text
+# SVG files are text-based
 
 # Data files
 *.sql text
 *.csv text eol=crlf
+# Keep CRLF for CSV files (e.g., Excel compatibility)
 *.tsv text
+# Will default to LF
 *.tab text
+# Will default to LF
 
 # Scripts and batch files
+*.sh text
+# Shell scripts, explicitly text, will use default LF
 *.ps1 text eol=crlf
+# Keep CRLF for Windows PowerShell scripts
 *.psm1 text eol=crlf
+# Keep CRLF
 *.psd1 text eol=crlf
+# Keep CRLF
 *.bat text eol=crlf
+# Keep CRLF for Windows batch files
 *.cmd text eol=crlf
+# Keep CRLF
 
-# Docker files
-Dockerfile text eol=lf
-*.dockerfile text eol=lf
-docker-compose*.yml text eol=lf
+# Docker files - explicitly marked as text, will use default LF
+Dockerfile text
+*.dockerfile text
+docker-compose*.yml text
+# YAML files, explicitly text, will use default LF
 
-# Binary files
+# YAML files (generic) - explicitly marked as text, will use default LF
+*.yml text
+*.yaml text
+
+# Other specific text files
+CODEOWNERS text
+*.pem text
+# PEM files are text, will use default LF
+
+# Binary files - explicitly marked as binary
 *.dll binary
 *.exe binary
 *.pdb binary
@@ -96,39 +118,39 @@ docker-compose*.yml text eol=lf
 *.nupkg binary
 *.snupkg binary
 
-# Image files
+# Image files - explicitly marked as binary (except SVG which is text)
 *.png binary
 *.jpg binary
 *.jpeg binary
 *.gif binary
 *.ico binary
-*.svg text
 *.bmp binary
 *.tiff binary
 *.webp binary
 
-# Font files
+# Font files - explicitly marked as binary
 *.ttf binary
 *.otf binary
 *.woff binary
 *.woff2 binary
 *.eot binary
 
-# Certificate and key files
+# Certificate and key files (except .pem which is text)
 *.pfx binary
 *.p12 binary
 *.cer binary
 *.crt binary
 *.der binary
 *.key binary
-*.pem text eol=lf
 
 # Visual Studio files
 *.suo binary
 *.user text
+# .user files are often XML, text, will use default LF
 *.userosscache binary
 *.sln.docstates binary
 *.userprefs text
+# .userprefs files are often XML, text, will use default LF
 
 # Rider files
 *.DotSettings text
@@ -138,6 +160,6 @@ docker-compose*.yml text eol=lf
 *.testsettings text
 *.runsettings text
 
-# Build output tracking
+# Build output tracking - Mark contents of these directories as binary
 [Bb]in/ binary
 [Oo]bj/ binary

@@ -42,6 +42,8 @@
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.4" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.4" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.4" />
+    <PackageReference Include="System.Text.Json" Version="9.0.4" />
   </ItemGroup>
 
   <ItemGroup>

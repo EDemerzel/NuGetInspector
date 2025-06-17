@@ -2,375 +2,324 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using NuGetInspectorApp.Models;
 using NuGetInspectorApp.Services;
+using NUnit.Framework;
+using FluentAssertions;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace NuGetInspectorApp.Tests.Services;
-
-/// <summary>
-/// Tests for the PackageAnalyzer class.
-/// </summary>
-[TestFixture]
-public class PackageAnalyzerTests
+namespace NuGetInspectorApp.Tests.Services
 {
-    private Mock<ILogger<PackageAnalyzer>> _mockLogger = null!;
-    private PackageAnalyzer _analyzer = null!;
-
-    [SetUp]
-    public void SetUp()
+    [TestFixture]
+    public class PackageAnalyzerTests
     {
-        _mockLogger = new Mock<ILogger<PackageAnalyzer>>();
-        _analyzer = new PackageAnalyzer(_mockLogger.Object);
-    }
+        private Mock<ILogger<PackageAnalyzer>> _mockLogger = null!;
+        private PackageAnalyzer _analyzer = null!;
 
-    [Test]
-    public void MergePackages_WithValidInputs_ReturnsCorrectMerge()
-    {
-        // Arrange
-        var outdatedProjects = CreateMockProjects("outdated");
-        var deprecatedProjects = CreateMockProjects("deprecated");
-        var vulnerableProjects = CreateMockProjects("vulnerable");
+        private const string TestProjectPath = "TestProject.csproj";
+        private const string TestFramework = "net9.0";
 
-        // Act
-        var result = _analyzer.MergePackages(
-            outdatedProjects,
-            deprecatedProjects,
-            vulnerableProjects,
-            "TestProject.csproj",
-            "net9.0");
-
-        // Assert
-        result.Should().NotBeEmpty();
-        result.Should().ContainKey("TestPackage");
-
-        var mergedPackage = result["TestPackage"];
-        mergedPackage.Id.Should().Be("TestPackage");
-        mergedPackage.RequestedVersion.Should().Be("1.0.0");
-        mergedPackage.ResolvedVersion.Should().Be("1.0.0");
-    }
-
-    [Test]
-    public void MergePackages_WithOutdatedPackage_SetsLatestVersionAndOutdatedFlag()
-    {
-        // Arrange
-        var outdatedProjects = CreateProjectsWithOutdatedPackage();
-        var deprecatedProjects = CreateMockProjects("deprecated");
-        var vulnerableProjects = CreateMockProjects("vulnerable");
-
-        // Act
-        var result = _analyzer.MergePackages(
-            outdatedProjects,
-            deprecatedProjects,
-            vulnerableProjects,
-            "TestProject.csproj",
-            "net9.0");
-
-        // Assert
-        result["TestPackage"].LatestVersion.Should().Be("2.0.0");
-        result["TestPackage"].IsOutdated.Should().BeTrue();
-    }
-
-    [Test]
-    public void MergePackages_WithDeprecatedPackage_SetsDeprecationInfo()
-    {
-        // Arrange
-        var outdatedProjects = CreateMockProjects("outdated");
-        var deprecatedProjects = CreateProjectsWithDeprecatedPackage();
-        var vulnerableProjects = CreateMockProjects("vulnerable");
-
-        // Act
-        var result = _analyzer.MergePackages(
-            outdatedProjects,
-            deprecatedProjects,
-            vulnerableProjects,
-            "TestProject.csproj",
-            "net9.0");
-
-        // Assert
-        result["TestPackage"].IsDeprecated.Should().BeTrue();
-        result["TestPackage"].DeprecationReasons.Should().Contain("Legacy");
-        result["TestPackage"].Alternative.Should().NotBeNull();
-        result["TestPackage"].Alternative!.Id.Should().Be("NewPackage");
-    }
-
-    [Test]
-    public void MergePackages_WithVulnerablePackage_SetsVulnerabilityInfo()
-    {
-        // Arrange
-        var outdatedProjects = CreateMockProjects("outdated");
-        var deprecatedProjects = CreateMockProjects("deprecated");
-        var vulnerableProjects = CreateProjectsWithVulnerablePackage();
-
-        // Act
-        var result = _analyzer.MergePackages(
-            outdatedProjects,
-            deprecatedProjects,
-            vulnerableProjects,
-            "TestProject.csproj",
-            "net9.0");
-
-        // Assert
-        result["TestPackage"].Vulnerabilities.Should().NotBeEmpty();
-        result["TestPackage"].Vulnerabilities[0].Severity.Should().Be("High");
-        result["TestPackage"].Vulnerabilities[0].AdvisoryUrl.Should().Be("https://github.com/advisories/GHSA-test");
-    }
-
-    [Test]
-    public void MergePackages_WithMissingProject_LogsWarningAndReturnsEmpty()
-    {
-        // Arrange
-        var emptyProjects = new List<ProjectInfo>();
-
-        // Act
-        var result = _analyzer.MergePackages(
-            emptyProjects,
-            emptyProjects,
-            emptyProjects,
-            "NonExistentProject.csproj",
-            "net9.0");
-
-        // Assert
-        result.Should().BeEmpty();
-        VerifyWarningLogged("Project not found in outdated report");
-    }
-
-    [Test]
-    public void MergePackages_WithNullInputs_ThrowsArgumentNullException()
-    {
-        // Act & Assert
-        FluentActions.Invoking(() =>
-            _analyzer.MergePackages(null!, new List<ProjectInfo>(), new List<ProjectInfo>(), "test.csproj", "net9.0"))
-            .Should().Throw<ArgumentNullException>();
-
-        FluentActions.Invoking(() =>
-            _analyzer.MergePackages(new List<ProjectInfo>(), null!, new List<ProjectInfo>(), "test.csproj", "net9.0"))
-            .Should().Throw<ArgumentNullException>();
-
-        FluentActions.Invoking(() =>
-            _analyzer.MergePackages(new List<ProjectInfo>(), new List<ProjectInfo>(), null!, "test.csproj", "net9.0"))
-            .Should().Throw<ArgumentNullException>();
-    }
-
-    [Test]
-    public void MergePackages_WithEmptyProjectPath_ThrowsArgumentException()
-    {
-        // Arrange
-        var projects = new List<ProjectInfo>();
-
-        // Act & Assert
-        FluentActions.Invoking(() =>
-            _analyzer.MergePackages(projects, projects, projects, "", "net9.0"))
-            .Should().Throw<ArgumentException>();
-
-        FluentActions.Invoking(() =>
-            _analyzer.MergePackages(projects, projects, projects, "test.csproj", ""))
-            .Should().Throw<ArgumentException>();
-    }
-
-    [TestCase("")]
-    [TestCase("   ")]
-    [TestCase("\t")]
-    public void MergePackages_WithWhitespaceProjectPath_ThrowsArgumentException(string projectPath)
-    {
-        // Arrange
-        var projects = new List<ProjectInfo>();
-
-        // Act & Assert
-        FluentActions.Invoking(() =>
-            _analyzer.MergePackages(projects, projects, projects, projectPath, "net9.0"))
-            .Should().Throw<ArgumentException>();
-    }
-
-    [Test]
-    public void MergePackages_WithMultiplePackages_MergesAllCorrectly()
-    {
-        // Arrange
-        var outdatedProjects = CreateProjectsWithMultiplePackages();
-        var deprecatedProjects = CreateMockProjects("deprecated");
-        var vulnerableProjects = CreateMockProjects("vulnerable");
-
-        // Act
-        var result = _analyzer.MergePackages(
-            outdatedProjects,
-            deprecatedProjects,
-            vulnerableProjects,
-            "TestProject.csproj",
-            "net9.0");
-
-        // Assert
-        result.Should().HaveCount(2);
-        result.Should().ContainKeys("TestPackage1", "TestPackage2");
-    }
-
-    #region Helper Methods
-
-    private static List<ProjectInfo> CreateMockProjects(string type)
-    {
-        return new List<ProjectInfo>
+        [SetUp]
+        public void SetUp()
         {
-            new ProjectInfo
+            _mockLogger = new Mock<ILogger<PackageAnalyzer>>();
+            _analyzer = new PackageAnalyzer(_mockLogger.Object);
+        }
+
+        #region Argument Validation Tests
+
+        [Test]
+        public void MergePackages_WithNullOutdatedProjects_ThrowsArgumentNullException()
+        {
+            FluentActions.Invoking(() => _analyzer.MergePackages(null!, new List<ProjectInfo>(), new List<ProjectInfo>(), TestProjectPath, TestFramework))
+                .Should().Throw<ArgumentNullException>().WithMessage("*outdatedProjects*");
+        }
+
+        [Test]
+        public void MergePackages_WithNullDeprecatedProjects_ThrowsArgumentNullException()
+        {
+            FluentActions.Invoking(() => _analyzer.MergePackages(new List<ProjectInfo>(), null!, new List<ProjectInfo>(), TestProjectPath, TestFramework))
+                .Should().Throw<ArgumentNullException>().WithMessage("*deprecatedProjects*");
+        }
+
+        [Test]
+        public void MergePackages_WithNullVulnerableProjects_ThrowsArgumentNullException()
+        {
+            FluentActions.Invoking(() => _analyzer.MergePackages(new List<ProjectInfo>(), new List<ProjectInfo>(), null!, TestProjectPath, TestFramework))
+                .Should().Throw<ArgumentNullException>().WithMessage("*vulnerableProjects*");
+        }
+
+        [Test]
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase(" ")]
+        public void MergePackages_WithInvalidProjectPath_ThrowsArgumentException(string? projectPath)
+        {
+            FluentActions.Invoking(() => _analyzer.MergePackages(new List<ProjectInfo>(), new List<ProjectInfo>(), new List<ProjectInfo>(), projectPath!, TestFramework))
+                .Should().Throw<ArgumentException>().WithMessage("*projectPath*");
+        }
+
+        [Test]
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase(" ")]
+        public void MergePackages_WithInvalidTargetFramework_ThrowsArgumentException(string? targetFramework)
+        {
+            FluentActions.Invoking(() => _analyzer.MergePackages(new List<ProjectInfo>(), new List<ProjectInfo>(), new List<ProjectInfo>(), TestProjectPath, targetFramework!))
+                .Should().Throw<ArgumentException>().WithMessage("*framework*"); // Parameter name in implementation is 'framework'
+        }
+
+        #endregion
+
+        #region Core Merging Logic Tests
+
+        [Test]
+        public void MergePackages_NoMatchingProject_ReturnsEmptyDictionary()
+        {
+            var outdated = CreateProjectList("OtherProject.csproj", TestFramework, CreateTestPackageReference("PkgA", "1.0", "1.1"));
+            var result = _analyzer.MergePackages(outdated, new List<ProjectInfo>(), new List<ProjectInfo>(), TestProjectPath, TestFramework);
+            result.Should().BeEmpty();
+        }
+
+        [Test]
+        public void MergePackages_NoMatchingFramework_ReturnsEmptyDictionary()
+        {
+            var outdated = CreateProjectList(TestProjectPath, "net8.0", CreateTestPackageReference("PkgA", "1.0", "1.1"));
+            var result = _analyzer.MergePackages(outdated, new List<ProjectInfo>(), new List<ProjectInfo>(), TestProjectPath, TestFramework);
+            result.Should().BeEmpty();
+        }
+
+        [Test]
+        public void MergePackages_ProjectAndFrameworkMatchButNoPackages_ReturnsEmptyDictionary()
+        {
+            var outdated = CreateProjectList(TestProjectPath, TestFramework); // No packages
+            var result = _analyzer.MergePackages(outdated, new List<ProjectInfo>(), new List<ProjectInfo>(), TestProjectPath, TestFramework);
+            result.Should().BeEmpty();
+        }
+
+        [Test]
+        public void MergePackages_PackageOnlyInOutdated_CorrectlyMerged()
+        {
+            var pkgA = CreateTestPackageReference("PkgA", "1.0.0", latestVersion: "1.1.0");
+            var outdated = CreateProjectList(TestProjectPath, TestFramework, pkgA);
+            var result = _analyzer.MergePackages(outdated, new List<ProjectInfo>(), new List<ProjectInfo>(), TestProjectPath, TestFramework);
+
+            result.Should().HaveCount(1);
+            result.Should().ContainKey("PkgA");
+            var merged = result["PkgA"];
+            merged.Id.Should().Be("PkgA");
+            merged.RequestedVersion.Should().Be("1.0.0");
+            merged.ResolvedVersion.Should().Be("1.0.0");
+            merged.IsOutdated.Should().BeTrue();
+            merged.LatestVersion.Should().Be("1.1.0");
+            merged.IsDeprecated.Should().BeFalse();
+            merged.Vulnerabilities.Should().BeEmpty();
+        }
+
+        [Test]
+        public void MergePackages_PackageOnlyInDeprecated_CorrectlyMerged()
+        {
+            var pkgB = CreateTestPackageReference("PkgB", "2.0.0", isDeprecated: true, deprecationReason: "Old", altPkgId: "PkgBNew");
+            var deprecated = CreateProjectList(TestProjectPath, TestFramework, pkgB);
+            var result = _analyzer.MergePackages(new List<ProjectInfo>(), deprecated, new List<ProjectInfo>(), TestProjectPath, TestFramework);
+
+            result.Should().HaveCount(1);
+            result.Should().ContainKey("PkgB");
+            var merged = result["PkgB"];
+            merged.Id.Should().Be("PkgB");
+            merged.IsOutdated.Should().BeFalse();
+            merged.IsDeprecated.Should().BeTrue();
+            merged.DeprecationReasons.Should().Contain("Old");
+            merged.Alternative.Should().NotBeNull();
+            merged.Alternative!.Id.Should().Be("PkgBNew");
+            merged.Vulnerabilities.Should().BeEmpty();
+        }
+
+        [Test]
+        public void MergePackages_PackageOnlyInVulnerable_CorrectlyMerged()
+        {
+            var pkgC = CreateTestPackageReference("PkgC", "3.0.0", hasVulnerabilities: true, vulnSeverity: "High");
+            var vulnerable = CreateProjectList(TestProjectPath, TestFramework, pkgC);
+            var result = _analyzer.MergePackages(new List<ProjectInfo>(), new List<ProjectInfo>(), vulnerable, TestProjectPath, TestFramework);
+
+            result.Should().HaveCount(1);
+            result.Should().ContainKey("PkgC");
+            var merged = result["PkgC"];
+            merged.Id.Should().Be("PkgC");
+            merged.IsOutdated.Should().BeFalse();
+            merged.IsDeprecated.Should().BeFalse();
+            merged.Vulnerabilities.Should().HaveCount(1);
+            merged.Vulnerabilities[0].Severity.Should().Be("High");
+        }
+
+        [Test]
+        public void MergePackages_PackageInAllLists_AllInfoCombined()
+        {
+            var pkg = "CombinedPkg";
+            var version = "1.0.0";
+            var outdatedPkg = CreateTestPackageReference(pkg, version, latestVersion: "1.1.0");
+            var deprecatedPkg = CreateTestPackageReference(pkg, version, isDeprecated: true, deprecationReason: "Legacy");
+            var vulnerablePkg = CreateTestPackageReference(pkg, version, hasVulnerabilities: true, vulnSeverity: "Critical");
+
+            var outdatedList = CreateProjectList(TestProjectPath, TestFramework, outdatedPkg);
+            var deprecatedList = CreateProjectList(TestProjectPath, TestFramework, deprecatedPkg);
+            var vulnerableList = CreateProjectList(TestProjectPath, TestFramework, vulnerablePkg);
+
+            var result = _analyzer.MergePackages(outdatedList, deprecatedList, vulnerableList, TestProjectPath, TestFramework);
+
+            result.Should().HaveCount(1);
+            result.Should().ContainKey(pkg);
+            var merged = result[pkg];
+            merged.Id.Should().Be(pkg);
+            merged.RequestedVersion.Should().Be(version); // Assuming Requested is taken from first appearance or consistent
+            merged.ResolvedVersion.Should().Be(version);
+            merged.IsOutdated.Should().BeTrue();
+            merged.LatestVersion.Should().Be("1.1.0");
+            merged.IsDeprecated.Should().BeTrue();
+            merged.DeprecationReasons.Should().Contain("Legacy");
+            merged.Vulnerabilities.Should().HaveCount(1);
+            merged.Vulnerabilities[0].Severity.Should().Be("Critical");
+        }
+
+        [Test]
+        public void MergePackages_PackageNotOutdatedButInList_CorrectlyMarked()
+        {
+            var pkgD = CreateTestPackageReference("PkgD", "1.0.0", latestVersion: "1.0.0"); // Resolved == Latest
+            var outdated = CreateProjectList(TestProjectPath, TestFramework, pkgD);
+            var result = _analyzer.MergePackages(outdated, new List<ProjectInfo>(), new List<ProjectInfo>(), TestProjectPath, TestFramework);
+
+            result.Should().HaveCount(1);
+            result.Should().ContainKey("PkgD");
+            var merged = result["PkgD"];
+            merged.IsOutdated.Should().BeFalse();
+            merged.LatestVersion.Should().Be("1.0.0");
+        }
+
+        [Test]
+        public void MergePackages_PackageInMultipleLists_TakesResolvedVersionFromFirstAvailable()
+        {
+            var pkgE_outdated = CreateTestPackageReference("PkgE", "1.0.0", latestVersion: "1.1.0"); // ResolvedVersion is 1.0.0
+            var pkgE_deprecated = CreateTestPackageReference("PkgE", "1.0.1", isDeprecated: true); // ResolvedVersion is 1.0.1
+
+            var outdatedList = CreateProjectList(TestProjectPath, TestFramework, pkgE_outdated);
+            var deprecatedList = CreateProjectList(TestProjectPath, TestFramework, pkgE_deprecated);
+
+            var result = _analyzer.MergePackages(outdatedList, deprecatedList, new List<ProjectInfo>(), TestProjectPath, TestFramework);
+
+            result.Should().ContainKey("PkgE");
+            var merged = result["PkgE"];
+            merged.ResolvedVersion.Should().Be("1.0.0"); // From outdated list (processed first by Upsert logic)
+            merged.IsOutdated.Should().BeTrue();
+            merged.LatestVersion.Should().Be("1.1.0");
+            merged.IsDeprecated.Should().BeTrue();
+        }
+
+        [Test]
+        public void MergePackages_MultiplePackages_AllMergedCorrectly()
+        {
+            var pkgA_outdated = CreateTestPackageReference("PkgA", "1.0.0", latestVersion: "1.1.0");
+            var pkgB_deprecated = CreateTestPackageReference("PkgB", "2.0.0", isDeprecated: true);
+            var pkgC_vulnerable = CreateTestPackageReference("PkgC", "3.0.0", hasVulnerabilities: true);
+            var pkgD_no_status = CreateTestPackageReference("PkgD", "4.0.0");
+
+
+            var outdatedList = CreateProjectList(TestProjectPath, TestFramework, pkgA_outdated, pkgD_no_status);
+            var deprecatedList = CreateProjectList(TestProjectPath, TestFramework, pkgB_deprecated);
+            var vulnerableList = CreateProjectList(TestProjectPath, TestFramework, pkgC_vulnerable);
+
+            var result = _analyzer.MergePackages(outdatedList, deprecatedList, vulnerableList, TestProjectPath, TestFramework);
+
+            result.Should().HaveCount(4);
+            result["PkgA"].IsOutdated.Should().BeTrue();
+            result["PkgB"].IsDeprecated.Should().BeTrue();
+            result["PkgC"].Vulnerabilities.Should().NotBeEmpty();
+            result["PkgD"].IsOutdated.Should().BeFalse();
+            result["PkgD"].IsDeprecated.Should().BeFalse();
+            result["PkgD"].Vulnerabilities.Should().BeEmpty();
+        }
+
+        [Test]
+        public void MergePackages_HandlesNullTopLevelPackagesListInFrameworkInfo()
+        {
+            var projectWithNullPackages = new ProjectInfo
             {
-                Path = "TestProject.csproj",
+                Path = TestProjectPath,
                 Frameworks = new List<FrameworkInfo>
                 {
-                    new FrameworkInfo
+                    new FrameworkInfo { Framework = TestFramework, TopLevelPackages = null! }
+                }
+            };
+            var outdatedList = new List<ProjectInfo> { projectWithNullPackages };
+            var result = _analyzer.MergePackages(outdatedList, new List<ProjectInfo>(), new List<ProjectInfo>(), TestProjectPath, TestFramework);
+            result.Should().BeEmpty();
+        }
+
+        [Test]
+        public void MergePackages_HandlesEmptyTopLevelPackagesListInFrameworkInfo()
+        {
+            var projectWithEmptyPackages = new ProjectInfo
+            {
+                Path = TestProjectPath,
+                Frameworks = new List<FrameworkInfo>
+                {
+                    new FrameworkInfo { Framework = TestFramework, TopLevelPackages = new List<PackageReference>() }
+                }
+            };
+            var outdatedList = new List<ProjectInfo> { projectWithEmptyPackages };
+            var result = _analyzer.MergePackages(outdatedList, new List<ProjectInfo>(), new List<ProjectInfo>(), TestProjectPath, TestFramework);
+            result.Should().BeEmpty();
+        }
+
+
+        #endregion
+
+        #region Helper Methods
+
+        private static List<ProjectInfo> CreateProjectList(string projectPath, string framework, params PackageReference[] packages)
+        {
+            return new List<ProjectInfo>
+            {
+                new ProjectInfo
+                {
+                    Path = projectPath,
+                    Frameworks = new List<FrameworkInfo>
                     {
-                        Framework = "net9.0",
-                        TopLevelPackages = new List<PackageReference>
+                        new FrameworkInfo
                         {
-                            new PackageReference
-                            {
-                                Id = "TestPackage",
-                                RequestedVersion = "1.0.0",
-                                ResolvedVersion = "1.0.0"
-                            }
+                            Framework = framework,
+                            TopLevelPackages = packages.ToList(),
+                            TransitivePackages = new List<PackageReference>() // Assuming transitive not directly merged by this unit's focus
                         }
                     }
                 }
-            }
-        };
-    }
+            };
+        }
 
-    private static List<ProjectInfo> CreateProjectsWithOutdatedPackage()
-    {
-        return new List<ProjectInfo>
+        private static PackageReference CreateTestPackageReference(
+            string id,
+            string version, // This will be used for RequestedVersion and ResolvedVersion
+            string? latestVersion = null,
+            bool isDeprecated = false,
+            string? deprecationReason = null,
+            string? altPkgId = null,
+            bool hasVulnerabilities = false,
+            string? vulnSeverity = null,
+            string? vulnAdvisoryUrl = null)
         {
-            new ProjectInfo
+            return new PackageReference
             {
-                Path = "TestProject.csproj",
-                Frameworks = new List<FrameworkInfo>
-                {
-                    new FrameworkInfo
-                    {
-                        Framework = "net9.0",
-                        TopLevelPackages = new List<PackageReference>
-                        {
-                            new PackageReference
-                            {
-                                Id = "TestPackage",
-                                RequestedVersion = "1.0.0",
-                                ResolvedVersion = "1.0.0",
-                                LatestVersion = "2.0.0"
-                            }
-                        }
-                    }
-                }
-            }
-        };
+                Id = id,
+                RequestedVersion = version,
+                ResolvedVersion = version,
+                LatestVersion = latestVersion, // Null if not outdated or info not available
+                IsDeprecated = isDeprecated,
+                DeprecationReasons = isDeprecated && deprecationReason != null ? new List<string> { deprecationReason } : null,
+                Alternative = isDeprecated && altPkgId != null ? new PackageAlternative { Id = altPkgId, VersionRange = ">=0.0.0" } : null, // Simplified VersionRange
+                HasVulnerabilities = hasVulnerabilities, // This field might be redundant if Vulnerabilities list is checked
+                Vulnerabilities = hasVulnerabilities ?
+                    new List<VulnerabilityInfo> { new VulnerabilityInfo { Severity = vulnSeverity ?? "Unknown", AdvisoryUrl = vulnAdvisoryUrl ?? "" } } :
+                    null // Or an empty list, depending on model definition
+            };
+        }
+        #endregion
     }
-
-    private static List<ProjectInfo> CreateProjectsWithDeprecatedPackage()
-    {
-        return new List<ProjectInfo>
-        {
-            new ProjectInfo
-            {
-                Path = "TestProject.csproj",
-                Frameworks = new List<FrameworkInfo>
-                {
-                    new FrameworkInfo
-                    {
-                        Framework = "net9.0",
-                        TopLevelPackages = new List<PackageReference>
-                        {
-                            new PackageReference
-                            {
-                                Id = "TestPackage",
-                                RequestedVersion = "1.0.0",
-                                ResolvedVersion = "1.0.0",
-                                IsDeprecated = true,
-                                DeprecationReasons = new List<string> { "Legacy" },
-                                Alternative = new PackageAlternative
-                                {
-                                    Id = "NewPackage",
-                                    VersionRange = ">=2.0.0"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        };
-    }
-
-    private static List<ProjectInfo> CreateProjectsWithVulnerablePackage()
-    {
-        return new List<ProjectInfo>
-        {
-            new ProjectInfo
-            {
-                Path = "TestProject.csproj",
-                Frameworks = new List<FrameworkInfo>
-                {
-                    new FrameworkInfo
-                    {
-                        Framework = "net9.0",
-                        TopLevelPackages = new List<PackageReference>
-                        {
-                            new PackageReference
-                            {
-                                Id = "TestPackage",
-                                RequestedVersion = "1.0.0",
-                                ResolvedVersion = "1.0.0",
-                                HasVulnerabilities = true,
-                                Vulnerabilities = new List<VulnerabilityInfo>
-                                {
-                                    new VulnerabilityInfo
-                                    {
-                                        Severity = "High",
-                                        AdvisoryUrl = "https://github.com/advisories/GHSA-test"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        };
-    }
-
-    private static List<ProjectInfo> CreateProjectsWithMultiplePackages()
-    {
-        return new List<ProjectInfo>
-        {
-            new ProjectInfo
-            {
-                Path = "TestProject.csproj",
-                Frameworks = new List<FrameworkInfo>
-                {
-                    new FrameworkInfo
-                    {
-                        Framework = "net9.0",
-                        TopLevelPackages = new List<PackageReference>
-                        {
-                            new PackageReference
-                            {
-                                Id = "TestPackage1",
-                                RequestedVersion = "1.0.0",
-                                ResolvedVersion = "1.0.0"
-                            },
-                            new PackageReference
-                            {
-                                Id = "TestPackage2",
-                                RequestedVersion = "2.0.0",
-                                ResolvedVersion = "2.0.0"
-                            }
-                        }
-                    }
-                }
-            }
-        };
-    }
-
-    private void VerifyWarningLogged(string expectedMessage)
-    {
-        _mockLogger.Verify(
-            x => x.Log(
-                LogLevel.Warning,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains(expectedMessage)),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
-    }
-
-    #endregion
 }

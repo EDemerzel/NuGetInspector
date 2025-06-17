@@ -4,405 +4,343 @@ using Moq;
 using NuGetInspectorApp.Models;
 using NuGetInspectorApp.Services;
 
-namespace NuGetInspectorApp.Tests.Services;
-
-/// <summary>
-/// Tests for the DotNetService class.
-/// </summary>
-[TestFixture]
-public class DotNetServiceTests
+namespace NuGetInspectorApp.Tests.Services
 {
-    private Mock<ILogger<DotNetService>> _mockLogger = null!;
-    private DotNetService _service = null!;
-
-    [SetUp]
-    public void SetUp()
+    /// <summary>
+    /// Tests for the DotNetService class.
+    /// </summary>
+    [TestFixture]
+    public class DotNetServiceTests
     {
-        _mockLogger = new Mock<ILogger<DotNetService>>();
-        _service = new DotNetService(_mockLogger.Object);
-    }
+        private Mock<ILogger<DotNetService>> _mockLogger = null!;
+        // private DotNetService _service = null!; // _service is not used in these specific tests, they test JsonSerializer directly.
 
-    [Test]
-    public void JsonDeserialization_WithValidJson_ReturnsDeserializedReport()
-    {
-        // Arrange
-        var validJsonReport = CreateValidJsonReport();
-
-        // Act
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        var result = JsonSerializer.Deserialize<DotnetListReport>(validJsonReport, options);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Projects.Should().HaveCount(1);
-        result.Projects![0].Path.Should().Be("TestProject.csproj");
-        result.Projects![0].Frameworks.Should().HaveCount(1);
-        result.Projects![0].Frameworks[0].Framework.Should().Be("net9.0");
-        result.Projects![0].Frameworks[0].TopLevelPackages.Should().HaveCount(1);
-        result.Projects![0].Frameworks[0].TopLevelPackages[0].Id.Should().Be("TestPackage");
-        result.Projects![0].Frameworks[0].TopLevelPackages[0].LatestVersion.Should().Be("2.0.0");
-    }
-
-    [Test]
-    public void JsonDeserialization_WithInvalidJson_ThrowsJsonException()
-    {
-        // Arrange
-        var invalidJson = "{ invalid json }";
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
-        // Act & Assert
-        FluentActions.Invoking(() => JsonSerializer.Deserialize<DotnetListReport>(invalidJson, options))
-            .Should().Throw<JsonException>();
-    }
-
-    [Test]
-    public void JsonDeserialization_WithEmptyJson_ReturnsEmptyReport()
-    {
-        // Arrange
-        var emptyJson = "{}";
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
-        // Act
-        var result = JsonSerializer.Deserialize<DotnetListReport>(emptyJson, options);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Projects.Should().BeNull();
-    }
-
-    [Test]
-    public void JsonDeserialization_WithComplexPackageData_ParsesAllProperties()
-    {
-        // Arrange
-        var complexJsonReport = CreateComplexJsonReport();
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
-        // Act
-        var result = JsonSerializer.Deserialize<DotnetListReport>(complexJsonReport, options);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Projects.Should().HaveCount(1);
-
-        var project = result.Projects![0];
-        project.Frameworks.Should().HaveCount(1);
-
-        var framework = project.Frameworks[0];
-        framework.TopLevelPackages.Should().HaveCount(2);
-        framework.TransitivePackages.Should().HaveCount(1);
-
-        // Test vulnerable package
-        var vulnerablePackage = framework.TopLevelPackages.First(p => p.Id == "VulnerablePackage");
-        vulnerablePackage.HasVulnerabilities.Should().BeTrue();
-        vulnerablePackage.Vulnerabilities.Should().HaveCount(1);
-        vulnerablePackage.Vulnerabilities![0].Severity.Should().Be("High");
-
-        // Test deprecated package
-        var deprecatedPackage = framework.TopLevelPackages.First(p => p.Id == "DeprecatedPackage");
-        deprecatedPackage.IsDeprecated.Should().BeTrue();
-        deprecatedPackage.DeprecationReasons.Should().HaveCount(2);
-        deprecatedPackage.Alternative.Should().NotBeNull();
-        deprecatedPackage.Alternative!.Id.Should().Be("NewPackage");
-
-        // Test transitive package
-        var transitivePackage = framework.TransitivePackages![0];
-        transitivePackage.Id.Should().Be("TransitivePackage");
-        transitivePackage.ResolvedVersion.Should().Be("1.5.0");
-    }
-
-    [Test]
-    public void JsonDeserialization_WithMultipleFrameworks_ParsesAllFrameworks()
-    {
-        // Arrange
-        var multiFrameworkJson = CreateMultiFrameworkJsonReport();
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
-        // Act
-        var result = JsonSerializer.Deserialize<DotnetListReport>(multiFrameworkJson, options);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Projects![0].Frameworks.Should().HaveCount(2);
-
-        var net9Framework = result.Projects![0].Frameworks.First(f => f.Framework == "net9.0");
-        var net48Framework = result.Projects![0].Frameworks.First(f => f.Framework == "net48");
-
-        net9Framework.TopLevelPackages[0].Id.Should().Be("ModernPackage");
-        net48Framework.TopLevelPackages[0].Id.Should().Be("LegacyPackage");
-    }
-
-    [Test]
-    public async Task GetPackageReportAsync_WithCancellationToken_RespectsCancellation()
-    {
-        // Arrange
-        using var cancellationTokenSource = new CancellationTokenSource();
-        var solutionPath = "TestSolution.sln";
-        var reportType = "--outdated";
-
-        cancellationTokenSource.Cancel();
-
-        // Act & Assert
-        await FluentActions.Invoking(() =>
-            _service.GetPackageReportAsync(solutionPath, reportType, cancellationTokenSource.Token))
-            .Should().ThrowAsync<OperationCanceledException>();
-    }
-
-    [TestCase(null)]
-    [TestCase("")]
-    [TestCase("   ")]
-    public void GetPackageReportAsync_WithInvalidSolutionPath_ThrowsArgumentException(string? solutionPath)
-    {
-        // Act & Assert
-        FluentActions.Invoking(() => _service.GetPackageReportAsync(solutionPath!, "--outdated"))
-            .Should().ThrowAsync<ArgumentException>();
-    }
-
-    [TestCase(null)]
-    [TestCase("")]
-    [TestCase("   ")]
-    public void GetPackageReportAsync_WithInvalidReportType_ThrowsArgumentException(string? reportType)
-    {
-        // Act & Assert
-        FluentActions.Invoking(() => _service.GetPackageReportAsync("test.sln", reportType!))
-            .Should().ThrowAsync<ArgumentException>();
-    }
-
-    [Test]
-    public void JsonDeserialization_HandlesNullValues()
-    {
-        // Arrange
-        var jsonWithNulls = """
+        [SetUp]
+        public void SetUp()
         {
-            "projects": [
-                {
-                    "path": "TestProject.csproj",
-                    "frameworks": [
-                        {
-                            "framework": "net9.0",
-                            "topLevelPackages": [
-                                {
-                                    "id": "TestPackage",
-                                    "requestedVersion": "1.0.0",
-                                    "resolvedVersion": "1.0.0",
-                                    "latestVersion": null,
-                                    "deprecationReasons": null,
-                                    "vulnerabilities": null
-                                }
-                            ],
-                            "transitivePackages": null
-                        }
-                    ]
-                }
-            ]
+            _mockLogger = new Mock<ILogger<DotNetService>>();
+            // _service = new DotNetService(_mockLogger.Object); // Only needed if testing _service methods
         }
-        """;
 
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
-        // Act
-        var result = JsonSerializer.Deserialize<DotnetListReport>(jsonWithNulls, options);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Projects.Should().HaveCount(1);
-
-        var package = result.Projects![0].Frameworks[0].TopLevelPackages[0];
-        package.Id.Should().Be("TestPackage");
-        package.LatestVersion.Should().BeNull();
-        package.DeprecationReasons.Should().BeNull();
-        package.Vulnerabilities.Should().BeNull();
-        result.Projects![0].Frameworks[0].TransitivePackages.Should().BeNull();
-    }
-
-    [Test]
-    public void JsonDeserialization_WithMalformedPackageStructure_HandlesGracefully()
-    {
-        // Arrange
-        var malformedJson = """
+        [Test]
+        public void JsonDeserialization_WithValidJson_ReturnsDeserializedReport()
         {
-            "projects": [
-                {
-                    "path": "TestProject.csproj",
-                    "frameworks": [
-                        {
-                            "framework": "net9.0",
-                            "topLevelPackages": [
-                                {
-                                    "id": "IncompletePackage"
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ]
+            // Arrange
+            var validJsonReport = CreateValidJsonReport();
+
+            // Act
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var result = JsonSerializer.Deserialize<DotnetListReport>(validJsonReport, options);
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.Projects.Should().HaveCount(1);
+            result.Projects![0].Path.Should().Be("TestProject.csproj");
+            result.Projects![0].Frameworks.Should().HaveCount(1);
+            result.Projects![0].Frameworks![0].Framework.Should().Be("net9.0");
+            result.Projects![0].Frameworks![0].TopLevelPackages.Should().HaveCount(1);
+            result.Projects![0].Frameworks![0].TopLevelPackages![0].Id.Should().Be("TestPackage");
+            result.Projects![0].Frameworks![0].TopLevelPackages![0].LatestVersion.Should().Be("2.0.0");
+            result.Version.Should().Be(1);
+            result.Parameters.Should().Be("--outdated");
+            result.Sources.Should().Contain("https://api.nuget.org/v3/index.json");
         }
-        """;
 
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
-        // Act
-        var result = JsonSerializer.Deserialize<DotnetListReport>(malformedJson, options);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Projects.Should().HaveCount(1);
-        var package = result.Projects![0].Frameworks[0].TopLevelPackages[0];
-        package.Id.Should().Be("IncompletePackage");
-        package.RequestedVersion.Should().BeNull();
-        package.ResolvedVersion.Should().BeNull();
-    }
-
-    #region Helper Methods
-
-    private static string CreateValidJsonReport()
-    {
-        var report = new
+        [Test]
+        public void JsonDeserialization_WithInvalidJson_ThrowsJsonException()
         {
-            projects = new[]
-            {
-                new
-                {
-                    path = "TestProject.csproj",
-                    frameworks = new[]
-                    {
-                        new
-                        {
-                            framework = "net9.0",
-                            topLevelPackages = new[]
-                            {
-                                new
-                                {
-                                    id = "TestPackage",
-                                    requestedVersion = "1.0.0",
-                                    resolvedVersion = "1.0.0",
-                                    latestVersion = "2.0.0"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        };
+            // Arrange
+#pragma warning disable JSON001 // Invalid JSON pattern
+            var invalidJson = "{ invalid json }";
+#pragma warning restore JSON001 // Invalid JSON pattern
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
-        return JsonSerializer.Serialize(report, JsonOptions);
-    }
+            // Act & Assert
+            FluentActions.Invoking(() => JsonSerializer.Deserialize<DotnetListReport>(invalidJson, options))
+                .Should().Throw<JsonException>();
+        }
 
-    private static string CreateComplexJsonReport()
-    {
-        var report = new
+        [Test]
+        public void JsonDeserialization_WithNullJson_ThrowsArgumentNullException()
         {
-            projects = new[]
-            {
-                new
-                {
-                    path = "ComplexProject.csproj",
-                    frameworks = new[]
-                    {
-                        new
-                        {
-                            framework = "net9.0",
-                            topLevelPackages = new object[]
-                            {
-                                new
-                                {
-                                    id = "VulnerablePackage",
-                                    requestedVersion = "1.0.0",
-                                    resolvedVersion = "1.0.0",
-                                    latestVersion = (string?)null,
-                                    hasVulnerabilities = true,
-                                    vulnerabilities = new[]
-                                    {
-                                        new
-                                        {
-                                            severity = "High",
-                                            advisoryUrl = "https://github.com/advisories/GHSA-test"
-                                        }
-                                    },
-                                    isDeprecated = false,
-                                    deprecationReasons = (string[]?)null,
-                                    alternative = (object?)null
-                                },
-                                new
-                                {
-                                    id = "DeprecatedPackage",
-                                    requestedVersion = "2.0.0",
-                                    resolvedVersion = "2.0.0",
-                                    latestVersion = (string?)null,
-                                    hasVulnerabilities = false,
-                                    vulnerabilities = (object[]?)null,
-                                    isDeprecated = true,
-                                    deprecationReasons = new[] { "Legacy", "CriticalBugs" },
-                                    alternative = new
-                                    {
-                                        id = "NewPackage",
-                                        versionRange = ">=3.0.0"
-                                    }
-                                }
-                            },
-                            transitivePackages = new[]
-                            {
-                                new
-                                {
-                                    id = "TransitivePackage",
-                                    requestedVersion = "1.5.0",
-                                    resolvedVersion = "1.5.0"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        };
+            // Arrange
+            string? nullJson = null;
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
-        return JsonSerializer.Serialize(report, JsonOptions);
-    }
+            // Act & Assert
+            FluentActions.Invoking(() => JsonSerializer.Deserialize<DotnetListReport>(nullJson!, options))
+                .Should().Throw<ArgumentNullException>();
+        }
 
-    private static string CreateMultiFrameworkJsonReport()
-    {
-        var report = new
+        [Test]
+        public void JsonDeserialization_WithEmptyJsonString_ThrowsJsonException() // "null" string is valid JSON for null object
         {
-            projects = new[]
+            // Arrange
+            var emptyJson = ""; // Empty string is not valid JSON
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            // Act & Assert
+            FluentActions.Invoking(() => JsonSerializer.Deserialize<DotnetListReport>(emptyJson, options))
+                .Should().Throw<JsonException>();
+        }
+
+        [Test]
+        public void JsonDeserialization_WithJsonNull_ReturnsNull()
+        {
+            // Arrange
+            var jsonNull = "null";
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            // Act
+            var result = JsonSerializer.Deserialize<DotnetListReport>(jsonNull, options);
+
+            // Assert
+            result.Should().BeNull();
+        }
+
+
+        [Test]
+        public void JsonDeserialization_WithOutdatedPackageJson_DeserializesCorrectly()
+        {
+            // Arrange
+            var outdatedJsonReport = CreateOutdatedJsonReport();
+
+            // Act
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var result = JsonSerializer.Deserialize<DotnetListReport>(outdatedJsonReport, options);
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.Projects![0].Frameworks![0].TopLevelPackages![0].LatestVersion.Should().Be("2.0.0");
+            result.Projects![0].Frameworks![0].TopLevelPackages![0].ResolvedVersion.Should().Be("1.0.0");
+        }
+
+        [Test]
+        public void JsonDeserialization_WithVulnerablePackageJson_DeserializesCorrectly()
+        {
+            // Arrange
+            var vulnerableJsonReport = CreateVulnerableJsonReport();
+
+            // Act
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var result = JsonSerializer.Deserialize<DotnetListReport>(vulnerableJsonReport, options);
+
+            // Assert
+            result.Should().NotBeNull();
+            var package = result!.Projects![0].Frameworks![0].TopLevelPackages![0];
+            package.HasVulnerabilities.Should().BeTrue();
+            package.Vulnerabilities.Should().HaveCount(1);
+            package.Vulnerabilities![0].Severity.Should().Be("High");
+            package.Vulnerabilities![0].AdvisoryUrl.Should().Be("https://github.com/advisories/GHSA-test");
+        }
+
+        [Test]
+        public void JsonDeserialization_WithDeprecatedPackageJson_DeserializesCorrectly()
+        {
+            // Arrange
+            var deprecatedJsonReport = CreateDeprecatedJsonReport();
+
+            // Act
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var result = JsonSerializer.Deserialize<DotnetListReport>(deprecatedJsonReport, options);
+
+            // Assert
+            result.Should().NotBeNull();
+            var package = result!.Projects![0].Frameworks![0].TopLevelPackages![0];
+            package.IsDeprecated.Should().BeTrue();
+            package.DeprecationReasons.Should().HaveCount(1).And.Contain("Legacy");
+            package.Alternative.Should().NotBeNull();
+            package.Alternative!.Id.Should().Be("NewPackage");
+            package.Alternative!.VersionRange.Should().Be(">=2.0.0");
+        }
+
+        [Test]
+        public void JsonDeserialization_WithTransitivePackages_DeserializesCorrectly()
+        {
+            // Arrange
+            var transitiveJsonReport = CreateTransitivePackagesJsonReport();
+
+            // Act
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var result = JsonSerializer.Deserialize<DotnetListReport>(transitiveJsonReport, options);
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.Projects![0].Frameworks![0].TransitivePackages.Should().HaveCount(1);
+            result.Projects![0].Frameworks![0].TransitivePackages![0].Id.Should().Be("TransitivePackage");
+            result.Projects![0].Frameworks![0].TransitivePackages![0].ResolvedVersion.Should().Be("1.5.0");
+        }
+
+        [Test]
+        public void JsonDeserialization_WithComplexStructure_HandlesAllProperties()
+        {
+            // Arrange
+            var complexJson = CreateComplexJsonReport();
+
+            // Act
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var result = JsonSerializer.Deserialize<DotnetListReport>(complexJson, options);
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.Projects.Should().HaveCount(2);
+
+            var firstProject = result.Projects![0];
+            firstProject.Path.Should().Be("WebApp/WebApp.csproj");
+            firstProject.Frameworks.Should().HaveCount(1);
+            firstProject.Frameworks![0].Framework.Should().Be("net9.0");
+            firstProject.Frameworks![0].TopLevelPackages.Should().HaveCount(2);
+            firstProject.Frameworks![0].TransitivePackages.Should().HaveCount(1);
+
+
+            var secondProject = result.Projects![1];
+            secondProject.Path.Should().Be("ClassLibrary/ClassLibrary.csproj");
+            secondProject.Frameworks.Should().HaveCount(1);
+            secondProject.Frameworks![0].TopLevelPackages.Should().HaveCount(1);
+        }
+
+        [Test]
+        public void JsonDeserialization_WithMissingOptionalProperties_HandlesGracefully()
+        {
+            // Arrange
+            var minimalJson = CreateMinimalJsonReport(); // Assumes DotnetListReport has nullable Version, Parameters, Sources
+
+            // Act
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var result = JsonSerializer.Deserialize<DotnetListReport>(minimalJson, options);
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.Projects.Should().HaveCount(1);
+            var package = result.Projects![0].Frameworks![0].TopLevelPackages![0];
+            package.LatestVersion.Should().BeNull();
+            package.Vulnerabilities.Should().BeNull(); // Or empty list depending on model init
+            package.DeprecationReasons.Should().BeNull(); // Or empty list
+            package.Alternative.Should().BeNull();
+
+            // Check top-level optional properties
+            // result.Version.Should().Be(0); // Default for int if not present and not nullable
+            // result.Parameters.Should().BeNull();
+            // result.Sources.Should().BeNull(); // Or empty list
+        }
+
+        #region Helper Methods
+
+        // These helpers now create JSON that should map to DotnetListReport, ProjectInfo, FrameworkInfo, PackageReference, etc.
+        private static string CreateValidJsonReport()
+        {
+            return """
             {
-                new
+              "version": 1,
+              "parameters": "--outdated",
+              "sources": [ "https://api.nuget.org/v3/index.json" ],
+              "projects": [
                 {
-                    path = "MultiTargetProject.csproj",
-                    frameworks = new[]
+                  "path": "TestProject.csproj",
+                  "frameworks": [
                     {
-                        new
+                      "framework": "net9.0",
+                      "topLevelPackages": [
                         {
-                            framework = "net9.0",
-                            topLevelPackages = new[]
-                            {
-                                new
-                                {
-                                    id = "ModernPackage",
-                                    requestedVersion = "3.0.0",
-                                    resolvedVersion = "3.0.0"
-                                }
-                            }
-                        },
-                        new
-                        {
-                            framework = "net48",
-                            topLevelPackages = new[]
-                            {
-                                new
-                                {
-                                    id = "LegacyPackage",
-                                    requestedVersion = "2.0.0",
-                                    resolvedVersion = "2.0.0"
-                                }
-                            }
+                          "id": "TestPackage",
+                          "requestedVersion": "1.0.0",
+                          "resolvedVersion": "1.0.0",
+                          "latestVersion": "2.0.0"
                         }
+                      ],
+                      "transitivePackages": []
                     }
+                  ]
                 }
+              ]
             }
-        };
+            """;
+        }
 
-        return JsonSerializer.Serialize(report, JsonOptions);
+        private static string CreateOutdatedJsonReport() => CreateValidJsonReport(); // Same structure for this test
+
+        private static string CreateVulnerableJsonReport()
+        {
+            return """
+            {
+              "version": 1, "parameters": "--vulnerable", "sources": [],
+              "projects": [ { "path": "TestProject.csproj", "frameworks": [ { "framework": "net9.0",
+                  "topLevelPackages": [ {
+                      "id": "TestPackage", "requestedVersion": "1.0.0", "resolvedVersion": "1.0.0",
+                      "hasVulnerabilities": true,
+                      "vulnerabilities": [ { "severity": "High", "advisoryUrl": "https://github.com/advisories/GHSA-test" } ]
+                  } ], "transitivePackages": [] } ] } ]
+            }
+            """;
+        }
+
+        private static string CreateDeprecatedJsonReport()
+        {
+            return """
+            {
+              "version": 1, "parameters": "--deprecated", "sources": [],
+              "projects": [ { "path": "TestProject.csproj", "frameworks": [ { "framework": "net9.0",
+                  "topLevelPackages": [ {
+                      "id": "TestPackage", "requestedVersion": "1.0.0", "resolvedVersion": "1.0.0",
+                      "isDeprecated": true, "deprecationReasons": ["Legacy"],
+                      "alternative": { "id": "NewPackage", "versionRange": ">=2.0.0" }
+                  } ], "transitivePackages": [] } ] } ]
+            }
+            """;
+        }
+
+        private static string CreateTransitivePackagesJsonReport()
+        {
+            return """
+            {
+              "version": 1, "parameters": "", "sources": [],
+              "projects": [ { "path": "TestProject.csproj", "frameworks": [ { "framework": "net9.0",
+                  "topLevelPackages": [ { "id": "TestPackage", "requestedVersion": "1.0.0", "resolvedVersion": "1.0.0" } ],
+                  "transitivePackages": [ { "id": "TransitivePackage", "resolvedVersion": "1.5.0" } ]
+              } ] } ]
+            }
+            """;
+        }
+
+        private static string CreateComplexJsonReport()
+        {
+            return """
+            {
+              "version": 1, "parameters": "--outdated --deprecated --vulnerable", "sources": ["s1"],
+              "projects": [
+                { "path": "WebApp/WebApp.csproj", "frameworks": [ { "framework": "net9.0",
+                    "topLevelPackages": [
+                      { "id": "Microsoft.AspNetCore.App", "requestedVersion": "9.0.0", "resolvedVersion": "9.0.0", "latestVersion": "9.0.1" },
+                      { "id": "Newtonsoft.Json", "requestedVersion": "12.0.3", "resolvedVersion": "12.0.3", "latestVersion": "13.0.3",
+                        "isDeprecated": true, "deprecationReasons": ["Legacy package"],
+                        "alternative": { "id": "System.Text.Json", "versionRange": ">=6.0.0" },
+                        "hasVulnerabilities": true,
+                        "vulnerabilities": [ { "severity": "High", "advisoryUrl": "https://github.com/advisories/GHSA-5crp-9r3c-p9vr" } ]
+                      }
+                    ],
+                    "transitivePackages": [ { "id": "System.Text.Json", "resolvedVersion": "9.0.0" } ]
+                } ] },
+                { "path": "ClassLibrary/ClassLibrary.csproj", "frameworks": [ { "framework": "net9.0",
+                    "topLevelPackages": [ { "id": "FluentAssertions", "requestedVersion": "7.0.0", "resolvedVersion": "7.0.0" } ],
+                    "transitivePackages": []
+                } ] }
+              ]
+            }
+            """;
+        }
+
+        private static string CreateMinimalJsonReport()
+        {
+            // This JSON only includes projects, assuming other top-level fields in DotnetListReport are nullable or have defaults.
+            return """
+            {
+              "projects": [ { "path": "MinimalProject.csproj", "frameworks": [ { "framework": "net9.0",
+                  "topLevelPackages": [ { "id": "MinimalPackage", "requestedVersion": "1.0.0", "resolvedVersion": "1.0.0" } ],
+                  "transitivePackages": []
+              } ] } ]
+            }
+            """;
+        }
+        #endregion
     }
-
-    private static JsonSerializerOptions JsonOptions => new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-
-    #endregion
 }

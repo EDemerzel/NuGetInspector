@@ -5,6 +5,7 @@ using NuGetInspectorApp.Configuration;
 using NuGetInspectorApp.Formatters;
 using NuGetInspectorApp.Models;
 using NuGetInspectorApp.Services;
+
 namespace NuGetInspectorApp.Application;
 
 /// <summary>
@@ -51,36 +52,26 @@ public class NuGetAuditApplication
         _logger = logger;
     }
 
-    /// <summary>
-    /// Executes the main application workflow to analyze NuGet packages.
-    /// </summary>
-    /// <param name="options">The command-line options specifying analysis parameters and output preferences.</param>
-    /// <returns>
-    /// A task that represents the asynchronous operation. The task result contains an exit code:
-    /// 0 for success, 1 for failure.
-    /// </returns>
-    /// <remarks>
-    /// This method performs the following steps:
-    /// <list type="number">
-    /// <item><description>Executes dotnet list package commands in parallel for outdated, deprecated, and vulnerable packages</description></item>
-    /// <item><description>Merges package information across different report types for each project and framework</description></item>
-    /// <item><description>Applies user-specified filters (only outdated, only deprecated, only vulnerable)</description></item>
-    /// <item><description>Fetches detailed metadata from NuGet API for all unique packages</description></item>
-    /// <item><description>Formats the results and outputs to console or file</description></item>
-    /// </list>
-    /// </remarks>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> is null.</exception>
-    public async Task<int> RunAsync(CommandLineOptions options)
+/// <summary>
+/// Executes the main application workflow to analyze NuGet packages.
+/// </summary>
+/// <param name="options">The command-line options specifying analysis parameters and output preferences.</param>
+/// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
+/// <returns>
+/// A task that represents the asynchronous operation. The task result contains an exit code:
+/// 0 for success, 1 for failure.
+/// </returns>
+    public async Task<int> RunAsync(CommandLineOptions options, CancellationToken cancellationToken = default)
     {
         try
         {
             // Fetch all reports in parallel
             var tasks = new[]
             {
-                _dotnetService.GetPackageReportAsync(options.SolutionPath, "--outdated"),
-                _dotnetService.GetPackageReportAsync(options.SolutionPath, "--deprecated"),
-                _dotnetService.GetPackageReportAsync(options.SolutionPath, "--vulnerable")
-            };
+            _dotnetService.GetPackageReportAsync(options.SolutionPath, "--outdated", cancellationToken),
+            _dotnetService.GetPackageReportAsync(options.SolutionPath, "--deprecated", cancellationToken),
+            _dotnetService.GetPackageReportAsync(options.SolutionPath, "--vulnerable", cancellationToken)
+        };
 
             var reports = await Task.WhenAll(tasks);
             var (outdatedRpt, deprecatedRpt, vulnRpt) = (reports[0], reports[1], reports[2]);
@@ -115,14 +106,14 @@ public class NuGetAuditApplication
             }
 
             // Fetch metadata for all unique packages in parallel
-            var packageMetadata = await FetchAllPackageMetadataAsync(mergedPackages);
+            var packageMetadata = await FetchAllPackageMetadataAsync(mergedPackages, cancellationToken);
 
             // Format and output results
-            var output = await _formatter.FormatReportAsync(outdatedRpt.Projects, mergedPackages, packageMetadata);
+            var output = await _formatter.FormatReportAsync(outdatedRpt.Projects, mergedPackages, packageMetadata, cancellationToken);
 
             if (!string.IsNullOrEmpty(options.OutputFile))
             {
-                await File.WriteAllTextAsync(options.OutputFile, output);
+                await File.WriteAllTextAsync(options.OutputFile, output, cancellationToken);
                 Console.WriteLine($"Report saved to: {options.OutputFile}");
             }
             else
@@ -139,28 +130,21 @@ public class NuGetAuditApplication
         }
     }
 
-    /// <summary>
-    /// Fetches detailed metadata from the NuGet API for all unique packages in the merged package collection.
-    /// </summary>
-    /// <param name="mergedPackages">
-    /// A dictionary containing merged package information keyed by "{ProjectPath}|{Framework}",
-    /// with values being dictionaries of packages keyed by package ID.
-    /// </param>
-    /// <returns>
-    /// A task that represents the asynchronous operation. The task result contains a dictionary
-    /// of package metadata keyed by "{PackageId}|{Version}" for efficient lookup.
-    /// </returns>
-    /// <remarks>
-    /// This method:
-    /// <list type="bullet">
-    /// <item><description>Identifies unique packages across all projects and frameworks to avoid duplicate API calls</description></item>
-    /// <item><description>Uses a semaphore to limit concurrent HTTP requests to the NuGet API</description></item>
-    /// <item><description>Handles failures gracefully by logging errors but continuing with other packages</description></item>
-    /// <item><description>Properly disposes of the semaphore to prevent resource leaks</description></item>
-    /// </list>
-    /// </remarks>
+/// <summary>
+/// Fetches detailed metadata from the NuGet API for all unique packages in the merged package collection.
+/// </summary>
+/// <param name="mergedPackages">
+/// A dictionary containing merged package information keyed by "{ProjectPath}|{Framework}",
+/// with values being dictionaries of packages keyed by package ID.
+/// </param>
+/// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
+/// <returns>
+/// A task that represents the asynchronous operation. The task result contains a dictionary
+/// of package metadata keyed by "{PackageId}|{Version}" for efficient lookup.
+/// </returns>
     private async Task<Dictionary<string, PackageMetadata>> FetchAllPackageMetadataAsync(
-        Dictionary<string, Dictionary<string, MergedPackage>> mergedPackages)
+        Dictionary<string, Dictionary<string, MergedPackage>> mergedPackages,
+        CancellationToken cancellationToken = default)
     {
         var uniquePackages = mergedPackages.Values
             .SelectMany(dict => dict.Values)
@@ -170,10 +154,10 @@ public class NuGetAuditApplication
         var semaphore = new SemaphoreSlim(5); // Limit concurrent requests
         var tasks = uniquePackages.Select(async pkg =>
         {
-            await semaphore.WaitAsync();
+            await semaphore.WaitAsync(cancellationToken);
             try
             {
-                var meta = await _nugetService.FetchPackageMetadataAsync(pkg.Id, pkg.ResolvedVersion);
+                var meta = await _nugetService.FetchPackageMetadataAsync(pkg.Id, pkg.ResolvedVersion, cancellationToken);
                 return new KeyValuePair<string, PackageMetadata>($"{pkg.Id}|{pkg.ResolvedVersion}", meta);
             }
             finally

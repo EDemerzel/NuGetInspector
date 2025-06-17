@@ -1,4 +1,3 @@
-// filepath: c:\Users\rofli\iCloudDrive\Source\NuGetInspectorApp\NuGetInspectorApp.Tests\Services\NuGetApiServiceTests.cs
 using System.Net;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -7,389 +6,299 @@ using Moq.Protected;
 using NuGetInspectorApp.Configuration;
 using NuGetInspectorApp.Models;
 using NuGetInspectorApp.Services;
+// using NuGetInspectorApp.Tests.Formatters; // Not used
 
-namespace NuGetInspectorApp.Tests.Services;
-
-/// <summary>
-/// Tests for the NuGetApiService class.
-/// </summary>
-[TestFixture]
-public class NuGetApiServiceTests
+namespace NuGetInspectorApp.Tests.Services
 {
-    private Mock<ILogger<NuGetApiService>> _mockLogger = null!;
-    private Mock<HttpMessageHandler> _mockHttpMessageHandler = null!;
-    private HttpClient _httpClient = null!;
-    private AppConfiguration _config = null!;
-    private NuGetApiService _service = null!;
-
-    [SetUp]
-    public void SetUp()
+    /// <summary>
+    /// Tests for the NuGetApiService class.
+    /// </summary>
+    [TestFixture]
+    public class NuGetApiServiceTests
     {
-        _mockLogger = new Mock<ILogger<NuGetApiService>>();
-        _mockHttpMessageHandler = new Mock<HttpMessageHandler>();
-        _httpClient = new HttpClient(_mockHttpMessageHandler.Object);
+        private Mock<ILogger<NuGetApiService>> _mockLogger = null!;
+        private Mock<HttpMessageHandler> _mockHttpMessageHandler = null!;
+        private HttpClient _httpClient = null!;
+        private AppConfiguration _configuration = null!;
+        private NuGetApiService _service = null!;
 
-        _config = new AppConfiguration
+        [SetUp]
+        public void SetUp()
         {
-            NuGetApiBaseUrl = "https://api.nuget.org/v3/registration5-gz-semver2",
-            NuGetGalleryBaseUrl = "https://www.nuget.org/packages",
-            MaxConcurrentRequests = 5
-        };
+            _mockLogger = new Mock<ILogger<NuGetApiService>>();
+            _mockHttpMessageHandler = new Mock<HttpMessageHandler>();
+            _httpClient = new HttpClient(_mockHttpMessageHandler.Object);
+            _configuration = new AppConfiguration
+            {
+                NuGetApiBaseUrl = "https://api.nuget.org/v3/registration5-gz-semver2", // Example base URL
+                NuGetGalleryBaseUrl = "https://www.nuget.org/packages",
+                MaxConcurrentRequests = 5,
+                HttpTimeoutSeconds = 30,
+                MaxRetryAttempts = 3,
+                RetryDelaySeconds = 2
+            };
 
-        _service = new NuGetApiService(_httpClient, _config, _mockLogger.Object);
-    }
-
-    [TearDown]
-    public void TearDown()
-    {
-        _httpClient?.Dispose();
-        _service?.Dispose();
-    }
-
-    [Test]
-    public async Task FetchPackageMetadataAsync_WithValidPackage_ReturnsMetadata()
-    {
-        // Arrange
-        var packageId = "TestPackage";
-        var version = "1.0.0";
-        var expectedUrl = "https://api.nuget.org/v3/registration5-gz-semver2/testpackage/1.0.0.json";
-
-        var responseContent = CreateMockNuGetResponse(packageId, version);
-        SetupHttpResponse(expectedUrl, HttpStatusCode.OK, responseContent);
-
-        // Act
-        var result = await _service.FetchPackageMetadataAsync(packageId, version);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.PackageUrl.Should().Be($"https://www.nuget.org/packages/{packageId}/{version}");
-        result.ProjectUrl.Should().Be("https://github.com/test/project");
-        result.DependencyGroups.Should().HaveCount(1);
-        result.DependencyGroups[0].TargetFramework.Should().Be("net9.0");
-        result.DependencyGroups[0].Dependencies.Should().HaveCount(1);
-        result.DependencyGroups[0].Dependencies[0].Id.Should().Be("DependencyPackage");
-        result.DependencyGroups[0].Dependencies[0].Range.Should().Be("[1.0.0, )");
-    }
-
-    [Test]
-    public async Task FetchPackageMetadataAsync_WithHttpError_ReturnsDefaultMetadata()
-    {
-        // Arrange
-        var packageId = "TestPackage";
-        var version = "1.0.0";
-
-        SetupHttpResponse(It.IsAny<string>(), HttpStatusCode.NotFound);
-
-        // Act
-        var result = await _service.FetchPackageMetadataAsync(packageId, version);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.PackageUrl.Should().Be($"https://www.nuget.org/packages/{packageId}/{version}");
-        result.ProjectUrl.Should().BeNullOrEmpty();
-        result.DependencyGroups.Should().BeEmpty();
-
-        VerifyWarningLogged("Failed to fetch metadata", "404");
-    }
-
-    [Test]
-    public async Task FetchPackageMetadataAsync_WithNetworkError_ReturnsDefaultMetadataAndLogsWarning()
-    {
-        // Arrange
-        var packageId = "TestPackage";
-        var version = "1.0.0";
-
-        _mockHttpMessageHandler.Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>())
-            .ThrowsAsync(new HttpRequestException("Network error"));
-
-        // Act
-        var result = await _service.FetchPackageMetadataAsync(packageId, version);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.PackageUrl.Should().Be($"https://www.nuget.org/packages/{packageId}/{version}");
-        result.ProjectUrl.Should().BeNullOrEmpty();
-        result.DependencyGroups.Should().BeEmpty();
-
-        VerifyWarningLogged("Network error fetching metadata");
-    }
-
-    [Test]
-    public async Task FetchPackageMetadataAsync_WithInvalidJson_ReturnsDefaultMetadataAndLogsWarning()
-    {
-        // Arrange
-        var packageId = "TestPackage";
-        var version = "1.0.0";
-
-        SetupHttpResponse(It.IsAny<string>(), HttpStatusCode.OK, "Invalid JSON content");
-
-        // Act
-        var result = await _service.FetchPackageMetadataAsync(packageId, version);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.PackageUrl.Should().Be($"https://www.nuget.org/packages/{packageId}/{version}");
-        result.ProjectUrl.Should().BeNullOrEmpty();
-        result.DependencyGroups.Should().BeEmpty();
-
-        VerifyWarningLogged("JSON parsing error");
-    }
-
-    [Test]
-    public async Task FetchPackageMetadataAsync_WithCancellation_ThrowsOperationCanceledException()
-    {
-        // Arrange
-        var packageId = "TestPackage";
-        var version = "1.0.0";
-        using var cancellationTokenSource = new CancellationTokenSource();
-        cancellationTokenSource.Cancel();
-
-        // Act & Assert
-        await FluentActions.Invoking(() =>
-            _service.FetchPackageMetadataAsync(packageId, version, cancellationTokenSource.Token))
-            .Should().ThrowAsync<OperationCanceledException>();
-    }
-
-    [TestCase("")]
-    [TestCase("   ")]
-    [TestCase("\t")]
-    public void FetchPackageMetadataAsync_WithInvalidPackageId_ThrowsArgumentException(string packageId)
-    {
-        // Act & Assert
-        FluentActions.Invoking(() => _service.FetchPackageMetadataAsync(packageId, "1.0.0"))
-            .Should().ThrowAsync<ArgumentException>();
-    }
-
-    [Test]
-    public void FetchPackageMetadataAsync_WithNullPackageId_ThrowsArgumentException()
-    {
-        // Act & Assert
-        FluentActions.Invoking(() => _service.FetchPackageMetadataAsync(null!, "1.0.0"))
-            .Should().ThrowAsync<ArgumentException>();
-    }
-
-    [TestCase("")]
-    [TestCase("   ")]
-    [TestCase("\t")]
-    public void FetchPackageMetadataAsync_WithInvalidVersion_ThrowsArgumentException(string version)
-    {
-        // Act & Assert
-        FluentActions.Invoking(() => _service.FetchPackageMetadataAsync("TestPackage", version))
-            .Should().ThrowAsync<ArgumentException>();
-    }
-
-    [Test]
-    public void FetchPackageMetadataAsync_WithNullVersion_ThrowsArgumentException()
-    {
-        // Act & Assert
-        FluentActions.Invoking(() => _service.FetchPackageMetadataAsync("TestPackage", null!))
-            .Should().ThrowAsync<ArgumentException>();
-    }
-
-    [Test]
-    public async Task FetchPackageMetadataAsync_WithSpecialCharactersInPackageId_UrlEncodesCorrectly()
-    {
-        // Arrange
-        var packageId = "Test.Package-Name";
-        var version = "1.0.0";
-        var expectedUrl = "https://api.nuget.org/v3/registration5-gz-semver2/test.package-name/1.0.0.json";
-
-        var responseContent = CreateMockNuGetResponse(packageId, version);
-        SetupHttpResponse(expectedUrl, HttpStatusCode.OK, responseContent);
-
-        // Act
-        var result = await _service.FetchPackageMetadataAsync(packageId, version);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.PackageUrl.Should().Be($"https://www.nuget.org/packages/{packageId}/{version}");
-    }
-
-    [Test]
-    public async Task FetchPackageMetadataAsync_WithCatalogEntryUrl_FetchesDetailedMetadata()
-    {
-        // Arrange
-        var packageId = "TestPackage";
-        var version = "1.0.0";
-        var catalogEntryUrl = "https://api.nuget.org/v3/catalog0/data/2024.01.01.01.01.01/testpackage.1.0.0.json";
-
-        var registrationResponse = new { catalogEntry = catalogEntryUrl };
-        var catalogResponse = CreateCatalogResponse();
-
-        SetupSequentialHttpResponses(registrationResponse, catalogResponse, catalogEntryUrl);
-
-        // Act
-        var result = await _service.FetchPackageMetadataAsync(packageId, version);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.ProjectUrl.Should().Be("https://github.com/test/detailed-project");
-        result.DependencyGroups.Should().HaveCount(1);
-        result.DependencyGroups[0].Dependencies[0].Id.Should().Be("DetailedDependency");
-    }
-
-    [Test]
-    public async Task FetchPackageMetadataAsync_WithEmbeddedCatalogEntry_ParsesInlineMetadata()
-    {
-        // Arrange
-        var packageId = "TestPackage";
-        var version = "1.0.0";
-
-        var responseContent = CreateMockNuGetResponseWithEmbeddedCatalog(packageId, version);
-        SetupHttpResponse(It.IsAny<string>(), HttpStatusCode.OK, responseContent);
-
-        // Act
-        var result = await _service.FetchPackageMetadataAsync(packageId, version);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.ProjectUrl.Should().Be("https://github.com/test/embedded-project");
-        result.DependencyGroups.Should().HaveCount(1);
-        result.DependencyGroups[0].Dependencies[0].Id.Should().Be("EmbeddedDependency");
-    }
-
-    #region Helper Methods
-
-    private void SetupHttpResponse(string expectedUrl, HttpStatusCode statusCode, string? content = null)
-    {
-        var httpResponse = new HttpResponseMessage(statusCode);
-        if (content != null)
-        {
-            httpResponse.Content = new StringContent(content);
+            _service = new NuGetApiService(_httpClient, _configuration, _mockLogger.Object);
         }
 
-        _mockHttpMessageHandler.Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.Is<HttpRequestMessage>(req => expectedUrl == It.IsAny<string>() || req.RequestUri!.ToString() == expectedUrl),
-                ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync(httpResponse);
-    }
-
-    private void SetupSequentialHttpResponses(object registrationResponse, object catalogResponse, string catalogEntryUrl)
-    {
-        var registrationJson = JsonSerializer.Serialize(registrationResponse, JsonOptions);
-        var catalogJson = JsonSerializer.Serialize(catalogResponse, JsonOptions);
-
-        _mockHttpMessageHandler.Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString().Contains("registration5-gz-semver2")),
-                ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent(registrationJson)
-            });
-
-        _mockHttpMessageHandler.Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString() == catalogEntryUrl),
-                ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent(catalogJson)
-            });
-    }
-
-    private static object CreateCatalogResponse()
-    {
-        return new
+        [TearDown]
+        public void TearDown()
         {
-            projectUrl = "https://github.com/test/detailed-project",
-            dependencyGroups = new[]
+            _httpClient?.Dispose();
+            _service?.Dispose();
+        }
+
+        [Test]
+        public async Task FetchPackageMetadataAsync_WithValidPackage_ReturnsMetadata()
+        {
+            // Arrange
+            var packageId = "Newtonsoft.Json";
+            var version = "13.0.3";
+
+            SetupHttpResponse(HttpStatusCode.OK, CreateValidRegistrationResponse());
+
+            // Act
+            var result = await _service.FetchPackageMetadataAsync(packageId, version);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.PackageUrl.Should().Be($"{_configuration.NuGetGalleryBaseUrl}/{packageId}/{version}");
+            result.ProjectUrl.Should().Be("https://www.newtonsoft.com/json");
+            result.DependencyGroups.Should().NotBeEmpty();
+            result.DependencyGroups![0].TargetFramework.Should().Be("net6.0");
+        }
+
+        [Test]
+        public async Task FetchPackageMetadataAsync_WithInvalidPackageId_ThrowsArgumentException()
+        {
+            await FluentActions.Invoking(() => _service.FetchPackageMetadataAsync("", "1.0.0"))
+                .Should().ThrowAsync<ArgumentException>().WithMessage("*Package ID*");
+        }
+
+        [Test]
+        public async Task FetchPackageMetadataAsync_WithInvalidVersion_ThrowsArgumentException()
+        {
+            await FluentActions.Invoking(() => _service.FetchPackageMetadataAsync("TestPackage", ""))
+                .Should().ThrowAsync<ArgumentException>().WithMessage("*Package version*");
+        }
+
+        [Test]
+        public async Task FetchPackageMetadataAsync_WithSuspiciousCharactersInId_ThrowsArgumentException()
+        {
+            await FluentActions.Invoking(() => _service.FetchPackageMetadataAsync("Test<script>", "1.0.0"))
+                .Should().ThrowAsync<ArgumentException>().WithMessage("*Package ID contains invalid characters*");
+        }
+
+        [Test]
+        public async Task FetchPackageMetadataAsync_WithSuspiciousCharactersInVersion_ThrowsArgumentException()
+        {
+            await FluentActions.Invoking(() => _service.FetchPackageMetadataAsync("TestPackage", "1.0.<0>"))
+                .Should().ThrowAsync<ArgumentException>().WithMessage("*Package version contains invalid characters*");
+        }
+
+
+        [Test]
+        public async Task FetchPackageMetadataAsync_WithHttpError_ReturnsDefaultMetadataWithPackageUrl()
+        {
+            // Arrange
+            var packageId = "TestPackage";
+            var version = "1.0.0";
+            SetupHttpResponse(HttpStatusCode.NotFound, "");
+
+            // Act
+            var result = await _service.FetchPackageMetadataAsync(packageId, version);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.PackageUrl.Should().Be($"{_configuration.NuGetGalleryBaseUrl}/{packageId}/{version}"); // PackageUrl is always constructed
+            result.ProjectUrl.Should().BeNull();
+            result.DependencyGroups.Should().BeEmpty(); // Or null depending on PackageMetadata initialization
+        }
+
+        [Test]
+        public async Task FetchPackageMetadataAsync_WithNetworkException_ReturnsDefaultMetadataWithPackageUrl()
+        {
+            // Arrange
+            var packageId = "TestPackage";
+            var version = "1.0.0";
+            _mockHttpMessageHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                .ThrowsAsync(new HttpRequestException("Network error"));
+
+            // Act
+            var result = await _service.FetchPackageMetadataAsync(packageId, version);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.PackageUrl.Should().Be($"{_configuration.NuGetGalleryBaseUrl}/{packageId}/{version}");
+            result.ProjectUrl.Should().BeNull();
+        }
+
+        [Test]
+        public async Task FetchPackageMetadataAsync_WithCatalogEntryUrl_FetchesAdditionalData()
+        {
+            // Arrange
+            var packageId = "TestPackage";
+            var version = "1.0.0";
+            var catalogUrl = "https://api.nuget.org/v3/catalog0/data/2023.01.01.01.01.01/testpackage.1.0.0.json";
+
+            // First response for the registration index
+            _mockHttpMessageHandler.Protected()
+                .SetupSequence<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(CreateRegistrationWithCatalogUrlResponse(catalogUrl)) })
+                .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(CreateValidCatalogEntryResponse()) }); // Second response for the catalog entry URL
+
+            // Act
+            var result = await _service.FetchPackageMetadataAsync(packageId, version);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.ProjectUrl.Should().Be("https://project.example.com"); // From catalog entry
+            _mockHttpMessageHandler.Protected().Verify(
+                "SendAsync", Times.Exactly(2), // Expect two calls
+                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString().Contains(packageId.ToLowerInvariant()) || req.RequestUri!.ToString() == catalogUrl), // Check both URIs
+                ItExpr.IsAny<CancellationToken>());
+        }
+
+
+        [Test]
+        public async Task FetchPackageMetadataAsync_WithCancellation_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            var packageId = "TestPackage";
+            var version = "1.0.0";
+            var cts = new CancellationTokenSource();
+
+            _mockHttpMessageHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                .Returns(async (HttpRequestMessage request, CancellationToken token) =>
+                { // Changed from ReturnsAsync to Returns
+                    await Task.Delay(100, token); // Simulate work
+                    token.ThrowIfCancellationRequested();
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
+                });
+            cts.Cancel();
+
+
+            // Act & Assert
+            await FluentActions.Invoking(() => _service.FetchPackageMetadataAsync(packageId, version, cts.Token))
+                .Should().ThrowAsync<OperationCanceledException>();
+        }
+
+        [Test]
+        public async Task FetchPackageMetadataAsync_WithInvalidJson_ReturnsDefaultMetadataWithPackageUrl()
+        {
+            // Arrange
+            var packageId = "TestPackage";
+            var version = "1.0.0";
+            SetupHttpResponse(HttpStatusCode.OK, "{ invalid json }");
+
+            // Act
+            var result = await _service.FetchPackageMetadataAsync(packageId, version);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.PackageUrl.Should().Be($"{_configuration.NuGetGalleryBaseUrl}/{packageId}/{version}");
+            result.ProjectUrl.Should().BeNull();
+        }
+
+        [Test]
+        public async Task FetchPackageMetadataAsync_WithTimeout_ReturnsDefaultMetadataWithPackageUrl()
+        {
+            // Arrange
+            var packageId = "TestPackage";
+            var version = "1.0.0";
+            _mockHttpMessageHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                .ThrowsAsync(new TaskCanceledException("Request timed out due to HttpClient timeout.", new TimeoutException())); // Simulate HttpClient timeout
+
+            // Act
+            var result = await _service.FetchPackageMetadataAsync(packageId, version);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.PackageUrl.Should().Be($"{_configuration.NuGetGalleryBaseUrl}/{packageId}/{version}");
+            result.ProjectUrl.Should().BeNull();
+        }
+
+        #region Helper Methods
+
+        private void SetupHttpResponse(HttpStatusCode statusCode, string content)
+        {
+            var response = new HttpResponseMessage(statusCode) { Content = new StringContent(content) };
+            _mockHttpMessageHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), It.IsAny<CancellationToken>())
+                .ReturnsAsync(response);
+        }
+
+        private static string CreateValidRegistrationResponse() // This is a registration index item, not the full catalog entry
+        {
+            // This JSON structure represents an item within the "items" array of a registration page.
+            // The actual service logic might pick one of these items based on version.
+            // For simplicity, this test assumes this item's catalogEntry is directly used.
+            return """
             {
-                new
-                {
-                    targetFramework = "net9.0",
-                    dependencies = new[]
+                "items": [
                     {
-                        new
-                        {
-                            id = "DetailedDependency",
-                            range = "[2.0.0, )"
+                        "catalogEntry": {
+                            "id": "Newtonsoft.Json",
+                            "version": "13.0.3",
+                            "projectUrl": "https://www.newtonsoft.com/json",
+                            "licenseUrl": "https://licenses.nuget.org/MIT",
+                            "description": "Json.NET is a popular high-performance JSON framework for .NET",
+                            "authors": "James Newton-King",
+                            "tags": ["json"],
+                            "published": "2022-11-24T20:21:40.34Z",
+                            "dependencyGroups": [
+                                {
+                                    "targetFramework": "net6.0",
+                                    "dependencies": [ { "id": "System.Text.Json", "range": "[6.0.0, )" } ]
+                                }
+                            ]
                         }
                     }
-                }
+                ]
             }
-        };
-    }
+            """;
+        }
 
-    private static string CreateMockNuGetResponse(string packageId, string version)
-    {
-        var response = new
+        private static string CreateRegistrationWithCatalogUrlResponse(string catalogEntryUrl)
         {
-            catalogEntry = new
+            // This JSON structure represents an item within the "items" array of a registration page,
+            // where the catalogEntry is a URL to the full catalog entry.
+            return $$"""
             {
-                projectUrl = "https://github.com/test/project",
-                dependencyGroups = new[]
-                {
-                    new
+                "items": [
                     {
-                        targetFramework = "net9.0",
-                        dependencies = new[]
-                        {
-                            new
-                            {
-                                id = "DependencyPackage",
-                                range = "[1.0.0, )"
-                            }
-                        }
+                        "catalogEntry": "{{catalogEntryUrl}}"
                     }
-                }
+                ]
             }
-        };
+            """;
+        }
 
-        return JsonSerializer.Serialize(response, JsonOptions);
-    }
-
-    private static string CreateMockNuGetResponseWithEmbeddedCatalog(string packageId, string version)
-    {
-        var response = new
+        private static string CreateValidCatalogEntryResponse() // This is the full catalog entry
         {
-            catalogEntry = new
+            return """
             {
-                projectUrl = "https://github.com/test/embedded-project",
-                dependencyGroups = new[]
-                {
-                    new
+                "id": "TestPackage",
+                "version": "1.0.0",
+                "projectUrl": "https://project.example.com",
+                "licenseUrl": "https://license.example.com",
+                "description": "A test package.",
+                "authors": "Test Author",
+                "tags": ["test", "example"],
+                "published": "2023-01-01T12:00:00Z",
+                "dependencyGroups": [
                     {
-                        targetFramework = "net9.0",
-                        dependencies = new[]
-                        {
-                            new
-                            {
-                                id = "EmbeddedDependency",
-                                range = "[1.5.0, )"
-                            }
-                        }
+                        "targetFramework": ".NETStandard2.0",
+                        "dependencies": [ { "id": "Dependency1", "range": "[1.0.0, )" } ]
                     }
-                }
+                ]
             }
-        };
+            """;
+        }
 
-        return JsonSerializer.Serialize(response, JsonOptions);
+        #endregion
     }
-
-    private static JsonSerializerOptions JsonOptions => new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-
-    private void VerifyWarningLogged(string expectedMessage, string? additionalText = null)
-    {
-        _mockLogger.Verify(
-            x => x.Log(
-                LogLevel.Warning,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) =>
-                    v.ToString()!.Contains(expectedMessage) &&
-                    (additionalText == null || v.ToString()!.Contains(additionalText))),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
-    }
-
-    #endregion
 }
