@@ -125,7 +125,7 @@ namespace NuGetInspectorApp.Models
         /// Gets or sets the package identifier.
         /// </summary>
         /// <value>The unique package ID as published on NuGet.org or other package sources.</value>
-        /// <example>Microsoft.Extensions.Logging, Newtonsoft.JSON, AutoMapper</example>
+        /// <example>Microsoft.Extensions.Logging, Newtonsoft.Json, AutoMapper</example>
         [JsonPropertyName("id")]
         public string Id { get; set; } = "";
 
@@ -262,7 +262,7 @@ namespace NuGetInspectorApp.Models
         /// Gets or sets the identifier of the recommended alternative package.
         /// </summary>
         /// <value>The package ID of the recommended replacement.</value>
-        /// <example>System.Text.JSON (as an alternative to Newtonsoft.JSON)</example>
+        /// <example>System.Text.Json (as an alternative to Newtonsoft.Json)</example>
         [JsonPropertyName("id")]
         public string Id { get; set; } = string.Empty;
 

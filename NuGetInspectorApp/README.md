@@ -98,19 +98,19 @@ Framework: net9.0
           - Microsoft.Extensions.Logging 9.0.0
           - Microsoft.Extensions.DependencyInjection 9.0.0
 
-• Newtonsoft.JSON (12.0.3)
-    Gallery URL: https://www.nuget.org/packages/Newtonsoft.JSON/12.0.3
+• Newtonsoft.Json (12.0.3)
+    Gallery URL: https://www.nuget.org/packages/Newtonsoft.Json/12.0.3
     Project URL: https://www.newtonsoft.com/json
     Requested: 12.0.3
     Latest:    13.0.3  (Outdated)
     Deprecated: Yes (Legacy package)
-      Alternative: System.Text.JSON >=6.0.0
+      Alternative: System.Text.Json >=6.0.0
     Vulnerabilities:
       - High: https://github.com/advisories/GHSA-5crp-9r3c-p9vr
 
 Transitive packages:
  • Microsoft.Extensions.Primitives (9.0.0)
- • System.Text.JSON (9.0.0)
+ • System.Text.Json (9.0.0)
 
 ------------------------------------------------------------
 ```

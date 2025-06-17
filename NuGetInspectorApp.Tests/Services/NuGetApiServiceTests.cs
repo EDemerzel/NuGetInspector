@@ -30,7 +30,7 @@ namespace NuGetInspectorApp.Tests.Services
             _httpClient = new HttpClient(_mockHttpMessageHandler.Object);
             _settings = new AppSettings
             {
-                NuGetApiBaseUrl = "https://api.nuget.org/v3/registration5-semver1", // Example base URL
+                NuGetApiBaseUrl = "https://api.nuget.org/v3/registration5-gz-semver2",
                 NuGetGalleryBaseUrl = "https://www.nuget.org/packages",
                 MaxConcurrentRequests = 5,
                 HttpTimeoutSeconds = 30,

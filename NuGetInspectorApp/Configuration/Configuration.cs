@@ -6,15 +6,16 @@ namespace NuGetInspectorApp.Configuration
     public class AppSettings
     {
         /// <summary>
-        /// Gets or sets the base URL for the NuGet API registration endpoint.
+        /// Base URL for NuGet API operations
+        /// 1. `https://api.nuget.org/v3/registration5-semver1/` - Basic registration
+        /// 2. `https://api.nuget.org/v3/registration5-gz-semver2/` - **Current working** (gzip + SemVer2)
+        /// 3. `https://api.nuget.org/v3/registration5-semver2/` - SemVer2 without compression
         /// </summary>
-        /// <value>The NuGet API base URL. Default is "https://api.nuget.org/v3/registration5-gz-semver2".</value>
-        public string NuGetApiBaseUrl { get; set; } = "https://api.nuget.org/v3/registration5-semver1";
+        public string NuGetApiBaseUrl { get; set; } = "https://api.nuget.org/v3/registration5-gz-semver2";
 
         /// <summary>
-        /// Gets or sets the base URL for the NuGet Gallery.
+        /// Base URL for NuGet Gallery links.
         /// </summary>
-        /// <value>The NuGet Gallery base URL. Default is "https://www.nuget.org/packages".</value>
         public string NuGetGalleryBaseUrl { get; set; } = "https://www.nuget.org/packages";
 
         /// <summary>
@@ -39,7 +40,7 @@ namespace NuGetInspectorApp.Configuration
         /// Gets or sets the delay in seconds between retry attempts for failed HTTP requests.
         /// </summary>
         /// <value>The retry delay in seconds. Default is 2.</value>
-        public int RetryDelaySeconds { get; set; } = 2;
+        public double RetryDelaySeconds { get; set; } = 2.0;
 
         /// <summary>
         /// Gets or sets the exponential backoff factor for retry delays.
@@ -184,7 +185,7 @@ namespace NuGetInspectorApp.Configuration
                 if (OutputFile.Contains("..") || OutputFile.Contains("~"))
                     throw new ArgumentException("Output file path cannot contain path traversal sequences", nameof(OutputFile));
 
-                var outputDir = Path.GetDirectoryName(Path.GetFullPath(OutputFile));
+                var outputDir = Path.GetDirectoryName(OutputFile);
                 if (outputDir != null && !Directory.Exists(outputDir))
                     throw new ArgumentException($"Output directory does not exist: {outputDir}", nameof(OutputFile));
             }

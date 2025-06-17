@@ -206,43 +206,42 @@ namespace NuGetInspectorApp.Services
         // It should either be implemented or removed if the public method is the intended one.
         // Assuming the public method is the one being used and tested.
         // If MergedPackage is a different target type, this needs separate logic.
-        Dictionary<string, MergedPackage> IPackageAnalyzer.MergePackages(
-            List<ProjectInfo> outdatedProjects,
-            List<ProjectInfo> deprecatedProjects,
-            List<ProjectInfo> vulnerableProjects,
-            string projectPath,
-            string framework)
-        {
-            // The explicit warning and placeholder comments are removed to make this the accepted implementation.
-            var packageReferenceResult = MergePackages(outdatedProjects, deprecatedProjects, vulnerableProjects, projectPath, framework);
-            var mergedPackageResult = new Dictionary<string, MergedPackage>(StringComparer.OrdinalIgnoreCase);
+Dictionary<string, MergedPackage> IPackageAnalyzer.MergePackages(
+    List<ProjectInfo> outdatedProjects,
+    List<ProjectInfo> deprecatedProjects,
+    List<ProjectInfo> vulnerableProjects,
+    string projectPath,
+    string framework)
+{
+    var packageReferenceResult = MergePackages(outdatedProjects, deprecatedProjects, vulnerableProjects, projectPath, framework);
+    var mergedPackageResult = new Dictionary<string, MergedPackage>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (var entry in packageReferenceResult)
+    foreach (var entry in packageReferenceResult)
+    {
+        var pr = entry.Value;
+        mergedPackageResult[entry.Key] = new MergedPackage
+        {
+            Id = pr.Id,
+            RequestedVersion = pr.RequestedVersion,
+            ResolvedVersion = pr.ResolvedVersion,
+            LatestVersion = pr.LatestVersion,
+            IsOutdated = pr.IsOutdated,
+            IsDeprecated = pr.IsDeprecated,
+            DeprecationReasons = pr.DeprecationReasons?.ToList() ?? new List<string>(),
+            Alternative = pr.Alternative != null ? new PackageAlternative
             {
-                var pr = entry.Value;
-                mergedPackageResult[entry.Key] = new MergedPackage
-                {
-                    Id = pr.Id,
-                    RequestedVersion = pr.RequestedVersion,
-                    ResolvedVersion = pr.ResolvedVersion,
-                    LatestVersion = pr.LatestVersion,
-                    IsOutdated = pr.IsOutdated,
-                    IsDeprecated = pr.IsDeprecated,
-                    DeprecationReasons = pr.DeprecationReasons?.ToList() ?? new List<string>(),
-                    Alternative = pr.Alternative != null ? new NuGetInspectorApp.Models.PackageAlternative
-                    {
-                        Id = pr.Alternative.Id,
-                        VersionRange = pr.Alternative.VersionRange
-                    } : null,
-                    Vulnerabilities = pr.Vulnerabilities?.Select(v => new NuGetInspectorApp.Models.VulnerabilityInfo
-                    {
-                        Severity = v.Severity,
-                        AdvisoryUrl = v.AdvisoryUrl
-                    }).ToList() ?? new List<NuGetInspectorApp.Models.VulnerabilityInfo>()
-                };
-            }
-            return mergedPackageResult;
-        }
+                Id = pr.Alternative.Id,
+                VersionRange = pr.Alternative.VersionRange
+            } : null,
+            Vulnerabilities = pr.Vulnerabilities?.Select(v => new VulnerabilityInfo
+            {
+                Severity = v.Severity,
+                AdvisoryUrl = v.AdvisoryUrl
+            }).ToList() ?? new List<VulnerabilityInfo>()
+        };
+    }
+    return mergedPackageResult;
+}
     }
 
     // Enum ReportType is defined in the same file in the provided context.

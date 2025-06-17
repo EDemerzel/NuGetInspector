@@ -310,14 +310,14 @@ namespace NuGetInspectorApp.Tests.Services
                 { "path": "WebApp/WebApp.csproj", "frameworks": [ { "framework": "net9.0",
                     "topLevelPackages": [
                       { "id": "Microsoft.AspNetCore.App", "requestedVersion": "9.0.0", "resolvedVersion": "9.0.0", "latestVersion": "9.0.1" },
-                      { "id": "Newtonsoft.JSON", "requestedVersion": "12.0.3", "resolvedVersion": "12.0.3", "latestVersion": "13.0.3",
+                      { "id": "Newtonsoft.Json", "requestedVersion": "12.0.3", "resolvedVersion": "12.0.3", "latestVersion": "13.0.3",
                         "isDeprecated": true, "deprecationReasons": ["Legacy package"],
-                        "alternative": { "id": "System.Text.JSON", "versionRange": ">=6.0.0" },
+                        "alternative": { "id": "System.Text.Json", "versionRange": ">=6.0.0" },
                         "hasVulnerabilities": true,
                         "vulnerabilities": [ { "severity": "High", "advisoryUrl": "https://github.com/advisories/GHSA-5crp-9r3c-p9vr" } ]
                       }
                     ],
-                    "transitivePackages": [ { "id": "System.Text.JSON", "resolvedVersion": "9.0.0" } ]
+                    "transitivePackages": [ { "id": "System.Text.Json", "resolvedVersion": "9.0.0" } ]
                 } ] },
                 { "path": "ClassLibrary/ClassLibrary.csproj", "frameworks": [ { "framework": "net9.0",
                     "topLevelPackages": [ { "id": "FluentAssertions", "requestedVersion": "7.0.0", "resolvedVersion": "7.0.0" } ],
