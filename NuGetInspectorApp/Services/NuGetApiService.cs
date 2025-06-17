@@ -53,7 +53,6 @@ namespace NuGetInspectorApp.Services
         }
 
         /// <inheritdoc />
-        /// <inheritdoc />
         public async Task<PackageMetaData> FetchPackageMetaDataAsync(string id, string version, CancellationToken cancellationToken = default)
         {
             // Enhanced input validation with detailed logging
@@ -70,7 +69,8 @@ namespace NuGetInspectorApp.Services
 
             var meta = new PackageMetaData
             {
-                PackageUrl = $"{_settings.NuGetGalleryBaseUrl}/{id}/{version}"
+                PackageUrl = $"{_settings.NuGetGalleryBaseUrl}/{id}/{version}",
+                DependencyGroups = new List<DependencyGroup>()
             };
 
             var operationId = Guid.NewGuid().ToString("N")[..8];
@@ -95,24 +95,29 @@ namespace NuGetInspectorApp.Services
                     return meta;
                 }
 
-                // Read as string for better lifecycle management
+                // Read content as string for better lifecycle management
                 var regContent = await regRes.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogTrace("[{OperationId}] Registration response size: {Size} characters", operationId, regContent.Length);
+
                 using var regDoc = JsonDocument.Parse(regContent);
                 var root = regDoc.RootElement;
 
                 _logger.LogTrace("[{OperationId}] Successfully parsed registration JSON for {PackageId} {Version}", operationId, id, version);
 
-                // Diagnostic logging for structure analysis
-                _logger.LogTrace("[{OperationId}] Registration structure: HasItems={HasItems}, HasDirectCatalogEntry={HasDirectCatalogEntry}",
-                    operationId, root.TryGetProperty("items", out _), root.TryGetProperty("catalogEntry", out _));
+                // Enhanced diagnostic logging for structure analysis
+                var rootProperties = root.EnumerateObject().Select(p => p.Name).ToList();
+                _logger.LogTrace("[{OperationId}] Registration structure: HasItems={HasItems}, HasDirectCatalogEntry={HasDirectCatalogEntry}, RootProperties=[{Properties}]",
+                    operationId, root.TryGetProperty("items", out _), root.TryGetProperty("catalogEntry", out _), string.Join(", ", rootProperties));
 
-                // Enhanced catalog entry detection and processing
-                JsonElement details = root; // Default to registration data
+                // Process catalog entry with improved lifecycle management
+                string? catalogContent = null;
+                JsonElement? catalogElement = null;
+
                 // First, try to find catalogEntry at root level
                 if (root.TryGetProperty("catalogEntry", out var catalogEntry))
                 {
                     _logger.LogTrace("[{OperationId}] Found catalogEntry at root level for {PackageId} {Version}", operationId, id, version);
-                    details = await ProcessCatalogEntry(catalogEntry, operationId, id, version, cancellationToken) ?? root;
+                    catalogContent = await ProcessCatalogEntryToString(catalogEntry, operationId, id, version, cancellationToken);
                 }
                 // If not found at root, search in items array
                 else if (root.TryGetProperty("items", out var itemsArray) && itemsArray.ValueKind == JsonValueKind.Array)
@@ -124,10 +129,9 @@ namespace NuGetInspectorApp.Services
                         if (item.TryGetProperty("catalogEntry", out catalogEntry))
                         {
                             _logger.LogTrace("[{OperationId}] Found catalogEntry in items array for {PackageId} {Version}", operationId, id, version);
-                            var processedEntry = await ProcessCatalogEntry(catalogEntry, operationId, id, version, cancellationToken);
-                            if (processedEntry.HasValue)
+                            catalogContent = await ProcessCatalogEntryToString(catalogEntry, operationId, id, version, cancellationToken);
+                            if (!string.IsNullOrEmpty(catalogContent))
                             {
-                                details = processedEntry.Value;
                                 break;
                             }
                         }
@@ -138,10 +142,28 @@ namespace NuGetInspectorApp.Services
                     _logger.LogTrace("[{OperationId}] No catalogEntry found, using registration data for {PackageId} {Version}", operationId, id, version);
                 }
 
-                // Extract Metadata with enhanced error handling
-                ExtractMetadataWithErrorHandling(meta, details, root, operationId, id, version);
+                // Parse catalog content if available
+                if (!string.IsNullOrEmpty(catalogContent))
+                {
+                    try
+                    {
+                        using var catalogDoc = JsonDocument.Parse(catalogContent);
+                        catalogElement = catalogDoc.RootElement.Clone();
+                        _logger.LogTrace("[{OperationId}] Successfully parsed catalog content for {PackageId} {Version}", operationId, id, version);
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogWarning(ex, "[{OperationId}] Failed to parse catalog content for {PackageId} {Version}: {Error}",
+                            operationId, id, version, ex.Message);
+                    }
+                }
 
-                _logger.LogDebug("[{OperationId}] Successfully completed Metadata fetch for {PackageId} {Version}", operationId, id, version);
+                // Extract metadata with enhanced error handling
+                var detailsElement = catalogElement ?? root;
+                ExtractMetadataWithErrorHandling(meta, detailsElement, root, operationId, id, version);
+
+                _logger.LogDebug("[{OperationId}] Successfully completed Metadata fetch for {PackageId} {Version}. ProjectUrl: {ProjectUrl}, Dependencies: {DepCount}",
+                    operationId, id, version, meta.ProjectUrl ?? "none", meta.DependencyGroups?.Sum(g => g.Dependencies?.Count ?? 0) ?? 0);
             }
             catch (TaskCanceledException ex) when (ex.CancellationToken == cancellationToken)
             {
@@ -168,21 +190,19 @@ namespace NuGetInspectorApp.Services
                 _semaphore.Release();
             }
 
-            // Ensure DependencyGroups is never null
-            meta.DependencyGroups ??= new List<DependencyGroup>();
             return meta;
         }
 
         /// <summary>
-        /// Processes a catalog entry, handling both URL strings and embedded objects.
+        /// Processes a catalog entry and returns its content as a string for safe parsing.
         /// </summary>
         /// <param name="catalogEntry">The catalog entry JSON element.</param>
         /// <param name="operationId">Operation ID for logging correlation.</param>
         /// <param name="id">Package ID.</param>
         /// <param name="version">Package version.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>The processed catalog entry as JSONElement, or null if processing failed.</returns>
-        private async Task<JsonElement?> ProcessCatalogEntry(
+        /// <returns>The catalog content as a string, or null if processing failed.</returns>
+        private async Task<string?> ProcessCatalogEntryToString(
             JsonElement catalogEntry,
             string operationId,
             string id,
@@ -215,13 +235,9 @@ namespace NuGetInspectorApp.Services
                         if (catalogRes.IsSuccessStatusCode)
                         {
                             var catalogContent = await catalogRes.Content.ReadAsStringAsync(cancellationToken);
-                            using var catalogDoc = JsonDocument.Parse(catalogContent);
-                            var catalogRoot = catalogDoc.RootElement.Clone();
-
-                            _logger.LogTrace("[{OperationId}] Successfully fetched and parsed catalog entry from URL for {PackageId} {Version}",
-                                operationId, id, version);
-
-                            return catalogRoot;
+                            _logger.LogTrace("[{OperationId}] Successfully fetched catalog entry from URL for {PackageId} {Version}. Size: {Size} characters",
+                                operationId, id, version, catalogContent.Length);
+                            return catalogContent;
                         }
                         else
                         {
@@ -239,7 +255,7 @@ namespace NuGetInspectorApp.Services
             else if (catalogEntry.ValueKind == JsonValueKind.Object)
             {
                 _logger.LogTrace("[{OperationId}] Using embedded catalog entry object for {PackageId} {Version}", operationId, id, version);
-                return catalogEntry.Clone();
+                return catalogEntry.GetRawText();
             }
             else
             {
@@ -281,6 +297,22 @@ namespace NuGetInspectorApp.Services
                 var depCount = meta.DependencyGroups?.Sum(g => g.Dependencies?.Count ?? 0) ?? 0;
                 _logger.LogTrace("[{OperationId}] Extracted {DependencyCount} dependencies across {GroupCount} groups for {PackageId} {Version}",
                     operationId, depCount, meta.DependencyGroups?.Count ?? 0, id, version);
+
+                // Additional diagnostic logging for Microsoft.Data.SqlClient
+                if (id.Equals("Microsoft.Data.SqlClient", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogDebug("[{OperationId}] Special logging for Microsoft.Data.SqlClient: Found {GroupCount} dependency groups",
+                        operationId, meta.DependencyGroups?.Count ?? 0);
+
+                    if (meta.DependencyGroups?.Any() == true)
+                    {
+                        foreach (var group in meta.DependencyGroups)
+                        {
+                            _logger.LogDebug("[{OperationId}] Dependency group: Framework={Framework}, Dependencies={DepCount}",
+                                operationId, group.TargetFramework, group.Dependencies?.Count ?? 0);
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -464,9 +496,16 @@ namespace NuGetInspectorApp.Services
             if (uri.Scheme != "https")
                 return false;
 
-            // Only allow NuGet API domains
-            var allowedHosts = new[] { "api.nuget.org" };
-            return allowedHosts.Contains(uri.Host, StringComparer.OrdinalIgnoreCase);
+            // Allow NuGet API domains and CDN endpoints
+            var allowedHosts = new[] {
+                "api.nuget.org",
+                "api-v2v3search-0.nuget.org",
+                "nuget.cdn.azure.cn"
+            };
+
+            return allowedHosts.Any(host =>
+                uri.Host.Equals(host, StringComparison.OrdinalIgnoreCase) ||
+                uri.Host.EndsWith($".{host}", StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>
