@@ -28,6 +28,29 @@ namespace NuGetInspectorApp.Configuration
         /// </summary>
         /// <value>The HTTP timeout in seconds. Default is 30.</value>
         public int HttpTimeoutSeconds { get; set; } = 30;
+        /// <summary>
+        /// Gets or sets the maximum number of retry attempts for failed HTTP requests.
+        /// </summary>
+        /// <value>The maximum retry attempts. Default is 3.</value>
+        public int MaxRetryAttempts { get; set; } = 3;
+
+        /// <summary>
+        /// Gets or sets the delay in seconds between retry attempts for failed HTTP requests.
+        /// </summary>
+        /// <value>The retry delay in seconds. Default is 2.</value>
+        public int RetryDelaySeconds { get; set; } = 2;
+
+        /// <summary>
+        /// Validates the configuration settings and throws exceptions if any values are out of range.
+        /// </summary>
+        public void Validate()
+        {
+            if (HttpTimeoutSeconds <= 0 || HttpTimeoutSeconds > 300)
+                throw new ArgumentOutOfRangeException(nameof(HttpTimeoutSeconds), "Must be between 1 and 300 seconds");
+
+            if (MaxConcurrentRequests <= 0 || MaxConcurrentRequests > 20)
+                throw new ArgumentOutOfRangeException(nameof(MaxConcurrentRequests), "Must be between 1 and 20");
+        }
 
         /// <summary>
         /// Gets or sets a value indicating whether verbose logging is enabled.

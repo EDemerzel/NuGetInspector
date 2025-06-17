@@ -10,12 +10,12 @@
 using System;
 using System.Reflection;
 
-[assembly: System.Reflection.AssemblyCompanyAttribute("Your Name")]
+[assembly: System.Reflection.AssemblyCompanyAttribute("EDemerzel Development")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute(("A comprehensive tool for analyzing NuGet packages in .NET solutions, including ou" +
     "tdated, deprecated, and vulnerable package detection."))]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ee4425c8efcf9528e375b34f2a1e3a397de428c3")]
 [assembly: System.Reflection.AssemblyProductAttribute("NuGetInspectorApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NuGet Inspector")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

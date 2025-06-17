@@ -1,10 +1,130 @@
 {
   "profiles": {
     "NuGetInspectorApp": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "commandLineArgs": "",
+      "workingDirectory": "$(ProjectDir)",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    "Debug - Self Analysis": {
+      "commandName": "Project",
+      "commandLineArgs": "\"$(SolutionDir)NuGetInspectorApp.sln\" --verbose",
+      "workingDirectory": "$(ProjectDir)",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "NUGET_INSPECTOR_LOG_LEVEL": "Debug"
+      }
+    },
+    "Debug - Outdated Only": {
+      "commandName": "Project",
+      "commandLineArgs": "\"$(SolutionDir)NuGetInspectorApp.sln\" --only-outdated --verbose",
+      "workingDirectory": "$(ProjectDir)",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    "Debug - Vulnerable Only": {
+      "commandName": "Project",
+      "commandLineArgs": "\"$(SolutionDir)NuGetInspectorApp.sln\" --only-vulnerable --verbose",
+      "workingDirectory": "$(ProjectDir)",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    "Debug - Deprecated Only": {
+      "commandName": "Project",
+      "commandLineArgs": "\"$(SolutionDir)NuGetInspectorApp.sln\" --only-deprecated --verbose",
+      "workingDirectory": "$(ProjectDir)",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    "Debug - Output to File": {
+      "commandName": "Project",
+      "commandLineArgs": "\"$(SolutionDir)NuGetInspectorApp.sln\" --output \"$(ProjectDir)debug-report.txt\" --verbose",
+      "workingDirectory": "$(ProjectDir)",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    "Test - Sample Solution": {
+      "commandName": "Project",
+      "commandLineArgs": "\"C:\\Projects\\SampleSolution\\SampleSolution.sln\" --verbose",
+      "workingDirectory": "$(ProjectDir)",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    "Test - With Custom Config": {
+      "commandName": "Project",
+      "commandLineArgs": "\"$(SolutionDir)NuGetInspectorApp.sln\" --verbose",
+      "workingDirectory": "$(ProjectDir)",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "NUGET_API_BASE_URL": "https://api.nuget.org/v3/registration5-gz-semver2",
+        "MAX_CONCURRENT_REQUESTS": "3",
+        "HTTP_TIMEOUT_SECONDS": "60"
+      }
+    },
+    "Production Simulation": {
+      "commandName": "Project",
+      "commandLineArgs": "\"$(SolutionDir)NuGetInspectorApp.sln\"",
+      "workingDirectory": "$(ProjectDir)",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Production"
+      }
+    },
+    "Performance Test": {
+      "commandName": "Project",
+      "commandLineArgs": "\"$(SolutionDir)NuGetInspectorApp.sln\" --verbose",
+      "workingDirectory": "$(ProjectDir)",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "MAX_CONCURRENT_REQUESTS": "10",
+        "HTTP_TIMEOUT_SECONDS": "15"
+      }
     },
     "Container (Dockerfile)": {
-      "commandName": "Docker"
+      "commandName": "Docker",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      },
+      "dockerComposeFilePath": "",
+      "dockerRunArguments": "-v \"$(SolutionDir):/app/workspace\"",
+      "dockerRunCommandArg": "/app/workspace/NuGetInspectorApp.sln --verbose --output /app/workspace/docker-report.txt"
+    },
+    "Container - Interactive": {
+      "commandName": "Docker",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      },
+      "dockerRunArguments": "-it -v \"$(SolutionDir):/app/workspace\" --entrypoint /bin/bash"
+    },
+    "Help": {
+      "commandName": "Project",
+      "commandLineArgs": "",
+      "workingDirectory": "$(ProjectDir)",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    "Minimal Args Test": {
+      "commandName": "Project",
+      "commandLineArgs": "\"NonExistentSolution.sln\"",
+      "workingDirectory": "$(ProjectDir)",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  },
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:0",
+      "sslPort": 0
     }
   }
 }

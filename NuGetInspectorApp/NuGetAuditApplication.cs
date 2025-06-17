@@ -7,6 +7,19 @@ using NuGetInspectorApp.Models;
 using NuGetInspectorApp.Services;
 namespace NuGetInspectorApp.Application;
 
+/// <summary>
+/// Provides the main application logic for analyzing NuGet packages in .NET solutions.
+/// </summary>
+/// <remarks>
+/// This class orchestrates the entire package analysis workflow, including:
+/// <list type="bullet">
+/// <item><description>Fetching package reports from dotnet CLI commands</description></item>
+/// <item><description>Merging data from multiple report types (outdated, deprecated, vulnerable)</description></item>
+/// <item><description>Fetching detailed metadata from the NuGet API</description></item>
+/// <item><description>Applying user-specified filters</description></item>
+/// <item><description>Formatting and outputting results</description></item>
+/// </list>
+/// </remarks>
 public class NuGetAuditApplication
 {
     private readonly INuGetApiService _nugetService;
@@ -15,6 +28,15 @@ public class NuGetAuditApplication
     private readonly IReportFormatter _formatter;
     private readonly ILogger<NuGetAuditApplication> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="NuGetAuditApplication"/> class.
+    /// </summary>
+    /// <param name="nugetService">The service for fetching package metadata from NuGet API.</param>
+    /// <param name="analyzer">The service for merging package information from different reports.</param>
+    /// <param name="dotnetService">The service for executing dotnet CLI commands.</param>
+    /// <param name="formatter">The service for formatting output reports.</param>
+    /// <param name="logger">The logger for recording application events.</param>
+    /// <exception cref="ArgumentNullException">Thrown when any of the required services is null.</exception>
     public NuGetAuditApplication(
         INuGetApiService nugetService,
         IPackageAnalyzer analyzer,
@@ -29,6 +51,25 @@ public class NuGetAuditApplication
         _logger = logger;
     }
 
+    /// <summary>
+    /// Executes the main application workflow to analyze NuGet packages.
+    /// </summary>
+    /// <param name="options">The command-line options specifying analysis parameters and output preferences.</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains an exit code:
+    /// 0 for success, 1 for failure.
+    /// </returns>
+    /// <remarks>
+    /// This method performs the following steps:
+    /// <list type="number">
+    /// <item><description>Executes dotnet list package commands in parallel for outdated, deprecated, and vulnerable packages</description></item>
+    /// <item><description>Merges package information across different report types for each project and framework</description></item>
+    /// <item><description>Applies user-specified filters (only outdated, only deprecated, only vulnerable)</description></item>
+    /// <item><description>Fetches detailed metadata from NuGet API for all unique packages</description></item>
+    /// <item><description>Formats the results and outputs to console or file</description></item>
+    /// </list>
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> is null.</exception>
     public async Task<int> RunAsync(CommandLineOptions options)
     {
         try
@@ -98,6 +139,26 @@ public class NuGetAuditApplication
         }
     }
 
+    /// <summary>
+    /// Fetches detailed metadata from the NuGet API for all unique packages in the merged package collection.
+    /// </summary>
+    /// <param name="mergedPackages">
+    /// A dictionary containing merged package information keyed by "{ProjectPath}|{Framework}",
+    /// with values being dictionaries of packages keyed by package ID.
+    /// </param>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains a dictionary
+    /// of package metadata keyed by "{PackageId}|{Version}" for efficient lookup.
+    /// </returns>
+    /// <remarks>
+    /// This method:
+    /// <list type="bullet">
+    /// <item><description>Identifies unique packages across all projects and frameworks to avoid duplicate API calls</description></item>
+    /// <item><description>Uses a semaphore to limit concurrent HTTP requests to the NuGet API</description></item>
+    /// <item><description>Handles failures gracefully by logging errors but continuing with other packages</description></item>
+    /// <item><description>Properly disposes of the semaphore to prevent resource leaks</description></item>
+    /// </list>
+    /// </remarks>
     private async Task<Dictionary<string, PackageMetadata>> FetchAllPackageMetadataAsync(
         Dictionary<string, Dictionary<string, MergedPackage>> mergedPackages)
     {

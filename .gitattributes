@@ -1,0 +1,143 @@
+# Always have LF line endings on checkout.
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+CODEOWNERS text eol=lf
+
+# .NET specific files
+*.cs text diff=csharp
+*.csx text diff=csharp
+*.vb text
+*.fs text
+*.fsx text
+*.fsi text
+
+# Project and solution files
+*.csproj text
+*.vbproj text
+*.fsproj text
+*.sln text
+*.slnx text
+
+# Configuration files
+*.config text
+*.json text
+*.xml text
+*.props text
+*.targets text
+*.resx text eol=crlf
+*.settings text
+
+# Package and dependency files
+*.nuspec text
+packages.config text
+Directory.Build.props text
+Directory.Build.targets text
+Directory.Packages.props text
+global.json text
+nuget.config text
+paket.dependencies text
+paket.lock text
+
+# Documentation and markup
+*.md text
+*.rst text
+*.txt text
+*.rtf text
+*.docx binary
+*.pdf binary
+
+# Web files
+*.html text
+*.htm text
+*.css text
+*.scss text
+*.sass text
+*.less text
+*.js text
+*.ts text
+*.jsx text
+*.tsx text
+*.vue text
+
+# Data files
+*.sql text
+*.csv text eol=crlf
+*.tsv text
+*.tab text
+
+# Scripts and batch files
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf
+*.psd1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Docker files
+Dockerfile text eol=lf
+*.dockerfile text eol=lf
+docker-compose*.yml text eol=lf
+
+# Binary files
+*.dll binary
+*.exe binary
+*.pdb binary
+*.lib binary
+*.obj binary
+*.exp binary
+*.ilk binary
+*.msi binary
+*.msm binary
+*.zip binary
+*.7z binary
+*.rar binary
+*.tar binary
+*.gz binary
+*.nupkg binary
+*.snupkg binary
+
+# Image files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text
+*.bmp binary
+*.tiff binary
+*.webp binary
+
+# Font files
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+
+# Certificate and key files
+*.pfx binary
+*.p12 binary
+*.cer binary
+*.crt binary
+*.der binary
+*.key binary
+*.pem text eol=lf
+
+# Visual Studio files
+*.suo binary
+*.user text
+*.userosscache binary
+*.sln.docstates binary
+*.userprefs text
+
+# Rider files
+*.DotSettings text
+*.DotSettings.user text
+
+# Test files
+*.testsettings text
+*.runsettings text
+
+# Build output tracking
+[Bb]in/ binary
+[Oo]bj/ binary
