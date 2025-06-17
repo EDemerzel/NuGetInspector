@@ -1,8 +1,8 @@
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NuGetInspectorApp.Models;
 using NuGetInspectorApp.Services;
+using System.Text.Json;
 
 namespace NuGetInspectorApp.Tests.Services
 {
@@ -23,14 +23,14 @@ namespace NuGetInspectorApp.Tests.Services
         }
 
         [Test]
-        public void JsonDeserialization_WithValidJson_ReturnsDeserializedReport()
+        public void JSONDeserialization_WithValidJSON_ReturnsDeserializedReport()
         {
             // Arrange
-            var validJsonReport = CreateValidJsonReport();
+            var validJSONReport = CreateValidJSONReport();
 
             // Act
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var result = JsonSerializer.Deserialize<DotnetListReport>(validJsonReport, options);
+            var result = JsonSerializer.Deserialize<DotNetListReport>(validJSONReport, options);
 
             // Assert
             result.Should().NotBeNull();
@@ -51,24 +51,24 @@ namespace NuGetInspectorApp.Tests.Services
         {
             // Arrange
 #pragma warning disable JSON001 // Invalid JSON pattern
-            var invalidJson = "{ invalid json }";
+            var invalidJSON = "{ invalid json }";
 #pragma warning restore JSON001 // Invalid JSON pattern
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
             // Act & Assert
-            FluentActions.Invoking(() => JsonSerializer.Deserialize<DotnetListReport>(invalidJson, options))
+            FluentActions.Invoking(() => JsonSerializer.Deserialize<DotNetListReport>(invalidJSON, options))
                 .Should().Throw<JsonException>();
         }
 
         [Test]
-        public void JsonDeserialization_WithNullJson_ThrowsArgumentNullException()
+        public void JsonDeserialization_WithNullJSON_ThrowsArgumentNullException()
         {
             // Arrange
-            string? nullJson = null;
+            string? nullJSON = null;
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
             // Act & Assert
-            FluentActions.Invoking(() => JsonSerializer.Deserialize<DotnetListReport>(nullJson!, options))
+            FluentActions.Invoking(() => JsonSerializer.Deserialize<DotNetListReport>(nullJSON!, options))
                 .Should().Throw<ArgumentNullException>();
         }
 
@@ -76,23 +76,23 @@ namespace NuGetInspectorApp.Tests.Services
         public void JsonDeserialization_WithEmptyJsonString_ThrowsJsonException() // "null" string is valid JSON for null object
         {
             // Arrange
-            var emptyJson = ""; // Empty string is not valid JSON
+            var emptyJSON = ""; // Empty string is not valid JSON
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
             // Act & Assert
-            FluentActions.Invoking(() => JsonSerializer.Deserialize<DotnetListReport>(emptyJson, options))
+            FluentActions.Invoking(() => JsonSerializer.Deserialize<DotNetListReport>(emptyJSON, options))
                 .Should().Throw<JsonException>();
         }
 
         [Test]
-        public void JsonDeserialization_WithJsonNull_ReturnsNull()
+        public void JsonDeserialization_WithJSONNull_ReturnsNull()
         {
             // Arrange
             var jsonNull = "null";
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
             // Act
-            var result = JsonSerializer.Deserialize<DotnetListReport>(jsonNull, options);
+            var result = JsonSerializer.Deserialize<DotNetListReport>(jsonNull, options);
 
             // Assert
             result.Should().BeNull();
@@ -100,14 +100,14 @@ namespace NuGetInspectorApp.Tests.Services
 
 
         [Test]
-        public void JsonDeserialization_WithOutdatedPackageJson_DeserializesCorrectly()
+        public void JSONDeserialization_WithOutdatedPackageJSON_DeserializesCorrectly()
         {
             // Arrange
-            var outdatedJsonReport = CreateOutdatedJsonReport();
+            var outdatedJSONReport = CreateOutdatedJSONReport();
 
             // Act
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var result = JsonSerializer.Deserialize<DotnetListReport>(outdatedJsonReport, options);
+            var result = JsonSerializer.Deserialize<DotNetListReport>(outdatedJSONReport, options);
 
             // Assert
             result.Should().NotBeNull();
@@ -116,14 +116,14 @@ namespace NuGetInspectorApp.Tests.Services
         }
 
         [Test]
-        public void JsonDeserialization_WithVulnerablePackageJson_DeserializesCorrectly()
+        public void JSONDeserialization_WithVulnerablePackageJSON_DeserializesCorrectly()
         {
             // Arrange
-            var vulnerableJsonReport = CreateVulnerableJsonReport();
+            var vulnerableJSONReport = CreateVulnerableJSONReport();
 
             // Act
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var result = JsonSerializer.Deserialize<DotnetListReport>(vulnerableJsonReport, options);
+            var result = JsonSerializer.Deserialize<DotNetListReport>(vulnerableJSONReport, options);
 
             // Assert
             result.Should().NotBeNull();
@@ -135,14 +135,14 @@ namespace NuGetInspectorApp.Tests.Services
         }
 
         [Test]
-        public void JsonDeserialization_WithDeprecatedPackageJson_DeserializesCorrectly()
+        public void JSONDeserialization_WithDeprecatedPackageJSON_DeserializesCorrectly()
         {
             // Arrange
-            var deprecatedJsonReport = CreateDeprecatedJsonReport();
+            var deprecatedJSONReport = CreateDeprecatedJSONReport();
 
             // Act
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var result = JsonSerializer.Deserialize<DotnetListReport>(deprecatedJsonReport, options);
+            var result = JsonSerializer.Deserialize<DotNetListReport>(deprecatedJSONReport, options);
 
             // Assert
             result.Should().NotBeNull();
@@ -155,14 +155,14 @@ namespace NuGetInspectorApp.Tests.Services
         }
 
         [Test]
-        public void JsonDeserialization_WithTransitivePackages_DeserializesCorrectly()
+        public void JSONDeserialization_WithTransitivePackages_DeserializesCorrectly()
         {
             // Arrange
-            var transitiveJsonReport = CreateTransitivePackagesJsonReport();
+            var transitiveJSONReport = CreateTransitivePackagesJSONReport();
 
             // Act
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var result = JsonSerializer.Deserialize<DotnetListReport>(transitiveJsonReport, options);
+            var result = JsonSerializer.Deserialize<DotNetListReport>(transitiveJSONReport, options);
 
             // Assert
             result.Should().NotBeNull();
@@ -172,14 +172,14 @@ namespace NuGetInspectorApp.Tests.Services
         }
 
         [Test]
-        public void JsonDeserialization_WithComplexStructure_HandlesAllProperties()
+        public void JSONDeserialization_WithComplexStructure_HandlesAllProperties()
         {
             // Arrange
-            var complexJson = CreateComplexJsonReport();
+            var complexJSON = CreateComplexJSONReport();
 
             // Act
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var result = JsonSerializer.Deserialize<DotnetListReport>(complexJson, options);
+            var result = JsonSerializer.Deserialize<DotNetListReport>(complexJSON, options);
 
             // Assert
             result.Should().NotBeNull();
@@ -200,14 +200,14 @@ namespace NuGetInspectorApp.Tests.Services
         }
 
         [Test]
-        public void JsonDeserialization_WithMissingOptionalProperties_HandlesGracefully()
+        public void JSONDeserialization_WithMissingOptionalProperties_HandlesGracefully()
         {
             // Arrange
-            var minimalJson = CreateMinimalJsonReport(); // Assumes DotnetListReport has nullable Version, Parameters, Sources
+            var minimalJSON = CreateMinimalJSONReport(); // Assumes DotNetListReport has nullable Version, Parameters, Sources
 
             // Act
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var result = JsonSerializer.Deserialize<DotnetListReport>(minimalJson, options);
+            var result = JsonSerializer.Deserialize<DotNetListReport>(minimalJSON, options);
 
             // Assert
             result.Should().NotBeNull();
@@ -220,14 +220,13 @@ namespace NuGetInspectorApp.Tests.Services
 
             // Check top-level optional properties
             // result.Version.Should().Be(0); // Default for int if not present and not nullable
-            // result.Parameters.Should().BeNull();
             // result.Sources.Should().BeNull(); // Or empty list
         }
 
         #region Helper Methods
 
-        // These helpers now create JSON that should map to DotnetListReport, ProjectInfo, FrameworkInfo, PackageReference, etc.
-        private static string CreateValidJsonReport()
+        // These helpers now create JSON that should map to DotNetListReport, ProjectInfo, FrameworkInfo, PackageReference, etc.
+        private static string CreateValidJSONReport()
         {
             return """
             {
@@ -257,9 +256,9 @@ namespace NuGetInspectorApp.Tests.Services
             """;
         }
 
-        private static string CreateOutdatedJsonReport() => CreateValidJsonReport(); // Same structure for this test
+        private static string CreateOutdatedJSONReport() => CreateValidJSONReport(); // Same structure for this test
 
-        private static string CreateVulnerableJsonReport()
+        private static string CreateVulnerableJSONReport()
         {
             return """
             {
@@ -274,7 +273,7 @@ namespace NuGetInspectorApp.Tests.Services
             """;
         }
 
-        private static string CreateDeprecatedJsonReport()
+        private static string CreateDeprecatedJSONReport()
         {
             return """
             {
@@ -289,7 +288,7 @@ namespace NuGetInspectorApp.Tests.Services
             """;
         }
 
-        private static string CreateTransitivePackagesJsonReport()
+        private static string CreateTransitivePackagesJSONReport()
         {
             return """
             {
@@ -302,7 +301,7 @@ namespace NuGetInspectorApp.Tests.Services
             """;
         }
 
-        private static string CreateComplexJsonReport()
+        private static string CreateComplexJSONReport()
         {
             return """
             {
@@ -311,14 +310,14 @@ namespace NuGetInspectorApp.Tests.Services
                 { "path": "WebApp/WebApp.csproj", "frameworks": [ { "framework": "net9.0",
                     "topLevelPackages": [
                       { "id": "Microsoft.AspNetCore.App", "requestedVersion": "9.0.0", "resolvedVersion": "9.0.0", "latestVersion": "9.0.1" },
-                      { "id": "Newtonsoft.Json", "requestedVersion": "12.0.3", "resolvedVersion": "12.0.3", "latestVersion": "13.0.3",
+                      { "id": "Newtonsoft.JSON", "requestedVersion": "12.0.3", "resolvedVersion": "12.0.3", "latestVersion": "13.0.3",
                         "isDeprecated": true, "deprecationReasons": ["Legacy package"],
-                        "alternative": { "id": "System.Text.Json", "versionRange": ">=6.0.0" },
+                        "alternative": { "id": "System.Text.JSON", "versionRange": ">=6.0.0" },
                         "hasVulnerabilities": true,
                         "vulnerabilities": [ { "severity": "High", "advisoryUrl": "https://github.com/advisories/GHSA-5crp-9r3c-p9vr" } ]
                       }
                     ],
-                    "transitivePackages": [ { "id": "System.Text.Json", "resolvedVersion": "9.0.0" } ]
+                    "transitivePackages": [ { "id": "System.Text.JSON", "resolvedVersion": "9.0.0" } ]
                 } ] },
                 { "path": "ClassLibrary/ClassLibrary.csproj", "frameworks": [ { "framework": "net9.0",
                     "topLevelPackages": [ { "id": "FluentAssertions", "requestedVersion": "7.0.0", "resolvedVersion": "7.0.0" } ],
@@ -329,9 +328,9 @@ namespace NuGetInspectorApp.Tests.Services
             """;
         }
 
-        private static string CreateMinimalJsonReport()
+        private static string CreateMinimalJSONReport()
         {
-            // This JSON only includes projects, assuming other top-level fields in DotnetListReport are nullable or have defaults.
+            // This JSON only includes projects, assuming other top-level fields in DotNetListReport are nullable or have defaults.
             return """
             {
               "projects": [ { "path": "MinimalProject.csproj", "frameworks": [ { "framework": "net9.0",

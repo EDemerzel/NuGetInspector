@@ -9,7 +9,7 @@ namespace NuGetInspectorApp.Models
     /// This class is used to deserialize the JSON output from 'dotnet list package --format json' commands,
     /// which provides information about packages across multiple projects in a solution.
     /// </remarks>
-    public class DotnetListReport
+    public class DotNetListReport
     {
         /// <summary>
         /// Gets or sets the schema version of the report format.
@@ -125,7 +125,7 @@ namespace NuGetInspectorApp.Models
         /// Gets or sets the package identifier.
         /// </summary>
         /// <value>The unique package ID as published on NuGet.org or other package sources.</value>
-        /// <example>Microsoft.Extensions.Logging, Newtonsoft.Json, AutoMapper</example>
+        /// <example>Microsoft.Extensions.Logging, Newtonsoft.JSON, AutoMapper</example>
         [JsonPropertyName("id")]
         public string Id { get; set; } = "";
 
@@ -262,7 +262,7 @@ namespace NuGetInspectorApp.Models
         /// Gets or sets the identifier of the recommended alternative package.
         /// </summary>
         /// <value>The package ID of the recommended replacement.</value>
-        /// <example>System.Text.Json (as an alternative to Newtonsoft.Json)</example>
+        /// <example>System.Text.JSON (as an alternative to Newtonsoft.JSON)</example>
         [JsonPropertyName("id")]
         public string Id { get; set; } = string.Empty;
 
@@ -349,13 +349,13 @@ namespace NuGetInspectorApp.Models
     }
 
     /// <summary>
-    /// Represents detailed metadata about a package fetched from the NuGet API.
+    /// Represents detailed Metadata about a package fetched from the NuGet API.
     /// </summary>
     /// <remarks>
     /// This class contains additional information not available from dotnet list commands,
     /// such as project URLs and dependency information.
     /// </remarks>
-    public class PackageMetadata
+    public class PackageMetaData
     {
         /// <summary>
         /// Gets or sets the URL to the package's gallery page.

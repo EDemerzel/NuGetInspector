@@ -1,6 +1,6 @@
 # NuGet Inspector
 
-A comprehensive command-line tool for analyzing NuGet packages in .NET solutions. NuGet Inspector helps you identify outdated, deprecated, and vulnerable packages across your entire solution, providing detailed metadata and dependency information.
+A comprehensive command-line tool for analyzing NuGet packages in .NET solutions. NuGet Inspector helps you identify outdated, deprecated, and vulnerable packages across your entire solution, providing detailed Metadata and dependency information.
 
 ## Features
 
@@ -98,19 +98,19 @@ Framework: net9.0
           - Microsoft.Extensions.Logging 9.0.0
           - Microsoft.Extensions.DependencyInjection 9.0.0
 
-• Newtonsoft.Json (12.0.3)
-    Gallery URL: https://www.nuget.org/packages/Newtonsoft.Json/12.0.3
+• Newtonsoft.JSON (12.0.3)
+    Gallery URL: https://www.nuget.org/packages/Newtonsoft.JSON/12.0.3
     Project URL: https://www.newtonsoft.com/json
     Requested: 12.0.3
     Latest:    13.0.3  (Outdated)
     Deprecated: Yes (Legacy package)
-      Alternative: System.Text.Json >=6.0.0
+      Alternative: System.Text.JSON >=6.0.0
     Vulnerabilities:
       - High: https://github.com/advisories/GHSA-5crp-9r3c-p9vr
 
 Transitive packages:
  • Microsoft.Extensions.Primitives (9.0.0)
- • System.Text.Json (9.0.0)
+ • System.Text.JSON (9.0.0)
 
 ------------------------------------------------------------
 ```
@@ -137,7 +137,7 @@ public class AppConfiguration
 - **Program.cs**: Entry point and dependency injection setup
 - **NuGetAuditApplication**: Main application orchestrator
 - **Services**: Business logic components
-  - `INuGetApiService`: Fetches package metadata from NuGet API
+  - `INuGetAPIService`: Fetches package Metadata from NuGet API
   - `IDotNetService`: Executes `dotnet list package` commands
   - `IPackageAnalyzer`: Merges and analyzes package data
 - **Formatters**: Output formatting
@@ -151,7 +151,7 @@ public class AppConfiguration
 1. Parse command-line arguments
 2. Execute `dotnet list package` commands in parallel (outdated, deprecated, vulnerable)
 3. Merge package information across different report types
-4. Fetch detailed metadata from NuGet API
+4. Fetch detailed Metadata from NuGet API
 5. Apply filters based on command-line options
 6. Format and output results
 
@@ -169,8 +169,8 @@ NuGetInspectorApp/
 ├── Models/
 │   └── Models.cs                 # Data models and DTOs
 ├── Services/
-│   ├── INuGetApiService.cs       # NuGet API service interface
-│   ├── NuGetApiService.cs        # NuGet API service implementation
+│   ├── INuGetAPIService.cs       # NuGet API service interface
+│   ├── NuGetAPIService.cs        # NuGet API service implementation
 │   ├── IDotNetService.cs         # .NET CLI service interface
 │   ├── DotNetService.cs          # .NET CLI service implementation
 │   ├── IPackageAnalyzer.cs       # Package analyzer interface
@@ -212,7 +212,7 @@ Example test structure:
 ```shell
 NuGetInspectorApp.Tests/
 ├── Services/
-│   ├── NuGetApiServiceTests.cs
+│   ├── NuGetAPIServiceTests.cs
 │   ├── DotNetServiceTests.cs
 │   └── PackageAnalyzerTests.cs
 ├── Formatters/

@@ -1,18 +1,18 @@
-﻿using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
-using System.CommandLine.Invocation;
+using NuGetInspectorApp.Application;
 using NuGetInspectorApp.Configuration;
 using NuGetInspectorApp.Formatters;
 using NuGetInspectorApp.Services;
-using NuGetInspectorApp.Application;
+using System.CommandLine;
+using System.CommandLine.Invocation;
 using System.Net;
 
 namespace NuGetInspectorApp;
 
-internal class Program
+internal static class Program
 {
     static async Task<int> Main(string[] args)
     {
@@ -233,7 +233,7 @@ internal class Program
                 OnlyDeprecated = onlyDeprecated
             };
 
-            var config = new AppConfiguration
+            var config = new AppSettings
             {
                 VerboseLogging = verbose,
                 MaxConcurrentRequests = maxConcurrent,
@@ -270,7 +270,7 @@ internal class Program
             }
             catch (Exception ex)
             {
-                var logger = host.Services.GetService<ILogger<Program>>();
+                var logger = host.Services.GetService<ILoggerFactory>()?.CreateLogger("Program");
                 logger?.LogError(ex, "Unhandled exception occurred");
                 await Console.Error.WriteLineAsync($"Error: {ex.Message}");
                 if (verbose)
@@ -289,55 +289,55 @@ internal class Program
         return rootCommand;
     }
 
-static IHostBuilder CreateHostBuilder(CommandLineOptions options, AppConfiguration config) =>
-    Host.CreateDefaultBuilder()
-        .ConfigureLogging(logging =>
-        {
-            logging.ClearProviders();
-
-            // Use simple console logging configuration
-            logging.AddConsole(configure =>
+    static IHostBuilder CreateHostBuilder(CommandLineOptions options, AppSettings config) =>
+        Host.CreateDefaultBuilder()
+            .ConfigureLogging(logging =>
             {
-                configure.FormatterName = ConsoleFormatterNames.Simple;
-            });
+                logging.ClearProviders();
 
-            if (options.VerboseOutput)
-                logging.SetMinimumLevel(LogLevel.Debug);
-            else
-                logging.SetMinimumLevel(LogLevel.Warning);
-        })
-        .ConfigureServices((context, services) =>
-        {
-            services.AddSingleton(config); // config is the AppConfiguration instance from CreateHostBuilder parameters
-            // services.AddSingleton<INuGetApiService, NuGetApiService>(); // Removed: Will be handled by AddHttpClient
-            services.AddSingleton<IPackageAnalyzer, PackageAnalyzer>();
-            services.AddSingleton<IDotNetService, DotNetService>();
-            services.AddSingleton<IReportFormatter, ConsoleReportFormatter>(); // Consider making this dynamic based on options.OutputFormat
-            services.AddTransient<NuGetAuditApplication>();
-
-            // Configure console formatter options through the service collection
-            services.Configure<ConsoleFormatterOptions>(options =>
-            {
-                options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss] ";
-                options.UseUtcTimestamp = false;
-            });
-
-            // Add HttpClient with proper configuration for INuGetApiService
-            services.AddHttpClient<INuGetApiService, NuGetApiService>((serviceProvider, client) =>
-            {
-                var appConfig = serviceProvider.GetRequiredService<AppConfiguration>();
-                if (!string.IsNullOrWhiteSpace(appConfig.NuGetApiBaseUrl))
+                // Use simple console logging configuration
+                logging.AddConsole(configure =>
                 {
-                    client.BaseAddress = new Uri(appConfig.NuGetApiBaseUrl);
-                }
-                client.Timeout = TimeSpan.FromSeconds(appConfig.HttpTimeoutSeconds);
-                client.DefaultRequestHeaders.Add("User-Agent", "NuGetInspector/1.0");
-                client.DefaultRequestHeaders.Add("Accept", "application/json");
+                    configure.FormatterName = ConsoleFormatterNames.Simple;
+                });
+
+                if (options.VerboseOutput)
+                    logging.SetMinimumLevel(LogLevel.Debug);
+                else
+                    logging.SetMinimumLevel(LogLevel.Warning);
             })
-            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+            .ConfigureServices((context, services) =>
             {
-                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
-                MaxConnectionsPerServer = config.MaxConcurrentRequests // 'config' is captured from CreateHostBuilder
+                services.AddSingleton(config); // config is the AppSettings instance from CreateHostBuilder parameters
+                                               // services.AddSingleton<INuGetAPIService, NuGetApiService>(); // Removed: Will be handled by AddHttpClient
+                services.AddSingleton<IPackageAnalyzer, PackageAnalyzer>();
+                services.AddSingleton<IDotNetService, DotNetService>();
+                services.AddSingleton<IReportFormatter, ConsoleReportFormatter>(); // Consider making this dynamic based on options.OutputFormat
+                services.AddTransient<NuGetAuditApplication>();
+
+                // Configure console formatter options through the service collection
+                services.Configure<ConsoleFormatterOptions>(options =>
+                {
+                    options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss] ";
+                    options.UseUtcTimestamp = false;
+                });
+
+                // Add HttpClient with proper configuration for INuGetAPIService
+                services.AddHttpClient<INuGetApiService, NuGetApiService>((serviceProvider, client) =>
+                    {
+                        var appConfig = serviceProvider.GetRequiredService<AppSettings>();
+                        if (!string.IsNullOrWhiteSpace(appConfig.NuGetApiBaseUrl))
+                        {
+                            client.BaseAddress = new Uri(appConfig.NuGetApiBaseUrl);
+                        }
+                        client.Timeout = TimeSpan.FromSeconds(appConfig.HttpTimeoutSeconds);
+                        client.DefaultRequestHeaders.Add("User-Agent", "NuGetInspector/1.0");
+                        client.DefaultRequestHeaders.Add("Accept", "application/json");
+                    })
+                    .ConfigurePrimaryHttpMessageHandler(serviceProvider => new HttpClientHandler
+                    {
+                        AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
+                        MaxConnectionsPerServer = serviceProvider.GetRequiredService<AppSettings>().MaxConcurrentRequests
+                    });
             });
-        });
 }

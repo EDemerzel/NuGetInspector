@@ -1,5 +1,5 @@
-using System.Text;
 using NuGetInspectorApp.Models;
+using System.Text;
 
 namespace NuGetInspectorApp.Formatters
 {
@@ -17,7 +17,7 @@ namespace NuGetInspectorApp.Formatters
         public Task<string> FormatReportAsync(
             List<ProjectInfo> projects,
             Dictionary<string, Dictionary<string, MergedPackage>> mergedPackages,
-            Dictionary<string, PackageMetadata> packageMetadata,
+            Dictionary<string, PackageMetaData> packageMetadata,
             CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(projects);
@@ -57,18 +57,18 @@ namespace NuGetInspectorApp.Formatters
         /// </summary>
         /// <param name="sb">The StringBuilder to append formatted output to.</param>
         /// <param name="merged">The collection of merged packages to format.</param>
-        /// <param name="packageMetadata">The package metadata dictionary for additional details.</param>
+        /// <param name="packageMetaData">The package Metadata dictionary for additional details.</param>
         private static void FormatDirectPackages(
             StringBuilder sb,
             Dictionary<string, MergedPackage> merged,
-            Dictionary<string, PackageMetadata> packageMetadata)
+            Dictionary<string, PackageMetaData> packageMetaData)
         {
             foreach (var pkg in merged.Values.OrderBy(p => p.Id, StringComparer.OrdinalIgnoreCase))
             {
                 sb.AppendLine($"• {pkg.Id} ({pkg.ResolvedVersion})");
 
                 var metaKey = $"{pkg.Id}|{pkg.ResolvedVersion}";
-                if (packageMetadata.TryGetValue(metaKey, out var meta))
+                if (packageMetaData.TryGetValue(metaKey, out var meta))
                 {
                     sb.AppendLine($"    Gallery URL: {meta.PackageUrl}");
                     if (!string.IsNullOrEmpty(meta.ProjectUrl))
@@ -78,7 +78,7 @@ namespace NuGetInspectorApp.Formatters
                 FormatVersionInformation(sb, pkg);
                 FormatDeprecationInformation(sb, pkg);
                 FormatVulnerabilityInformation(sb, pkg);
-                FormatDependencyInformation(sb, pkg, packageMetadata, metaKey);
+                FormatDependencyInformation(sb, pkg, packageMetaData, metaKey);
 
                 sb.AppendLine();
             }
@@ -133,15 +133,15 @@ namespace NuGetInspectorApp.Formatters
         /// </summary>
         /// <param name="sb">The StringBuilder to append formatted output to.</param>
         /// <param name="pkg">The package to format dependency information for.</param>
-        /// <param name="packageMetadata">The package metadata dictionary.</param>
-        /// <param name="metaKey">The metadata key for the current package.</param>
+        /// <param name="packageMetaData">The package Metadata dictionary.</param>
+        /// <param name="metaKey">The Metadata key for the current package.</param>
         private static void FormatDependencyInformation(
             StringBuilder sb,
             MergedPackage pkg,
-            Dictionary<string, PackageMetadata> packageMetadata,
+            Dictionary<string, PackageMetaData> packageMetaData,
             string metaKey)
         {
-            if (packageMetadata.TryGetValue(metaKey, out var meta))
+            if (packageMetaData.TryGetValue(metaKey, out var meta))
             {
                 sb.AppendLine("    Supported frameworks & their dependencies:");
                 if (meta.DependencyGroups.Count == 0)

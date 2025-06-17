@@ -1,18 +1,18 @@
-using System.Net;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using NuGetInspectorApp.Configuration;
 using NuGetInspectorApp.Models;
+using System.Net;
+using System.Text.Json;
 
 namespace NuGetInspectorApp.Services
 {
     /// <summary>
-    /// Implements the NuGet API service for fetching package metadata with retry logic.
+    /// Implements the NuGet API service for fetching package Metadata with retry logic.
     /// </summary>
     public class NuGetApiService : INuGetApiService, IDisposable
     {
         private readonly HttpClient _httpClient;
-        private readonly AppConfiguration _configuration;
+        private readonly AppSettings _settings;
         private readonly ILogger<NuGetApiService> _logger;
         private readonly SemaphoreSlim _semaphore;
         private readonly Random _jitterRandom;
@@ -21,22 +21,22 @@ namespace NuGetInspectorApp.Services
         /// Initializes a new instance of the <see cref="NuGetApiService"/> class.
         /// </summary>
         /// <param name="httpClient">The HTTP client to use for requests.</param>
-        /// <param name="configuration">The application configuration.</param>
+        /// <param name="settings">The application settings.</param>
         /// <param name="logger">The logger instance.</param>
         /// <exception cref="ArgumentNullException">Thrown when any parameter is null.</exception>
-        public NuGetApiService(HttpClient httpClient, AppConfiguration configuration, ILogger<NuGetApiService> logger)
+        public NuGetApiService(HttpClient httpClient, AppSettings settings, ILogger<NuGetApiService> logger)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _semaphore = new SemaphoreSlim(configuration.MaxConcurrentRequests);
+            _semaphore = new SemaphoreSlim(settings.MaxConcurrentRequests);
             _jitterRandom = new Random();
 
-            // Validate configuration
-            _configuration.Validate();
+            // Validate settings
+            _settings.Validate();
 
             // Configure HTTP client
-            _httpClient.Timeout = TimeSpan.FromSeconds(configuration.HttpTimeoutSeconds);
+            _httpClient.Timeout = TimeSpan.FromSeconds(settings.HttpTimeoutSeconds);
             _httpClient.DefaultRequestHeaders.Clear();
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "NuGetInspector/1.0");
             _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
@@ -45,16 +45,16 @@ namespace NuGetInspectorApp.Services
         /// <summary>
         /// Alternative constructor that creates its own HttpClient with optimized settings.
         /// </summary>
-        /// <param name="configuration">The application configuration.</param>
+        /// <param name="settings">The application settings.</param>
         /// <param name="logger">The logger instance.</param>
-        public NuGetApiService(AppConfiguration configuration, ILogger<NuGetApiService> logger)
-            : this(CreateOptimizedHttpClient(configuration), configuration, logger)
+        public NuGetApiService(AppSettings settings, ILogger<NuGetApiService> logger)
+            : this(CreateOptimizedHttpClient(settings), settings, logger)
         {
         }
 
         /// <inheritdoc />
         /// <inheritdoc />
-        public async Task<PackageMetadata> FetchPackageMetadataAsync(string id, string version, CancellationToken cancellationToken = default)
+        public async Task<PackageMetaData> FetchPackageMetaDataAsync(string id, string version, CancellationToken cancellationToken = default)
         {
             // Enhanced input validation with detailed logging
             try
@@ -64,22 +64,22 @@ namespace NuGetInspectorApp.Services
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError("Invalid input for package fetch: {Error}", ex.Message);
+                _logger.LogError(ex, "Invalid input for package fetch: {Error}", ex.Message);
                 throw;
             }
 
-            var meta = new PackageMetadata
+            var meta = new PackageMetaData
             {
-                PackageUrl = $"{_configuration.NuGetGalleryBaseUrl}/{id}/{version}"
+                PackageUrl = $"{_settings.NuGetGalleryBaseUrl}/{id}/{version}"
             };
 
             var operationId = Guid.NewGuid().ToString("N")[..8];
-            _logger.LogDebug("Starting metadata fetch operation {OperationId} for {PackageId} {Version}", operationId, id, version);
+            _logger.LogDebug("Starting Metadata fetch operation {OperationId} for {PackageId} {Version}", operationId, id, version);
 
             await _semaphore.WaitAsync(cancellationToken);
             try
             {
-                string regUrl = $"{_configuration.NuGetApiBaseUrl}/{id.ToLowerInvariant()}/{version}.json";
+                string regUrl = $"{_settings.NuGetApiBaseUrl}/{id.ToLowerInvariant()}/{version}.json";
                 _logger.LogDebug("[{OperationId}] Fetching registration from {Url}", operationId, regUrl);
 
                 using var regRes = await ExecuteWithRetryAsync(
@@ -90,7 +90,7 @@ namespace NuGetInspectorApp.Services
 
                 if (!regRes.IsSuccessStatusCode)
                 {
-                    _logger.LogWarning("[{OperationId}] Failed to fetch metadata for {PackageId} {Version}. Status: {StatusCode}. Returning minimal metadata.",
+                    _logger.LogWarning("[{OperationId}] Failed to fetch Metadata for {PackageId} {Version}. Status: {StatusCode}. Returning minimal Metadata.",
                         operationId, id, version, regRes.StatusCode);
                     return meta;
                 }
@@ -108,7 +108,6 @@ namespace NuGetInspectorApp.Services
 
                 // Enhanced catalog entry detection and processing
                 JsonElement details = root; // Default to registration data
-
                 // First, try to find catalogEntry at root level
                 if (root.TryGetProperty("catalogEntry", out var catalogEntry))
                 {
@@ -139,29 +138,29 @@ namespace NuGetInspectorApp.Services
                     _logger.LogTrace("[{OperationId}] No catalogEntry found, using registration data for {PackageId} {Version}", operationId, id, version);
                 }
 
-                // Extract metadata with enhanced error handling
+                // Extract Metadata with enhanced error handling
                 ExtractMetadataWithErrorHandling(meta, details, root, operationId, id, version);
 
-                _logger.LogDebug("[{OperationId}] Successfully completed metadata fetch for {PackageId} {Version}", operationId, id, version);
+                _logger.LogDebug("[{OperationId}] Successfully completed Metadata fetch for {PackageId} {Version}", operationId, id, version);
             }
             catch (TaskCanceledException ex) when (ex.CancellationToken == cancellationToken)
             {
-                _logger.LogWarning("[{OperationId}] Request cancelled for {PackageId} {Version}", operationId, id, version);
+                _logger.LogWarning(ex, "[{OperationId}] Request cancelled for {PackageId} {Version}", operationId, id, version);
                 throw;
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogWarning("[{OperationId}] Network error fetching metadata for {PackageId} {Version}: {Error}. Returning minimal metadata.",
+                _logger.LogWarning(ex, "[{OperationId}] Network error fetching Metadata for {PackageId} {Version}: {Error}. Returning minimal Metadata.",
                     operationId, id, version, ex.Message);
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning("[{OperationId}] JSON parsing error for {PackageId} {Version}: {Error}. Returning minimal metadata.",
+                _logger.LogWarning(ex, "[{OperationId}] JSON parsing error for {PackageId} {Version}: {Error}. Returning minimal Metadata.",
                     operationId, id, version, ex.Message);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[{OperationId}] Unexpected error fetching metadata for {PackageId} {Version}. Returning minimal metadata.",
+                _logger.LogError(ex, "[{OperationId}] Unexpected error fetching Metadata for {PackageId} {Version}. Returning minimal Metadata.",
                     operationId, id, version);
             }
             finally
@@ -182,7 +181,7 @@ namespace NuGetInspectorApp.Services
         /// <param name="id">Package ID.</param>
         /// <param name="version">Package version.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>The processed catalog entry as JsonElement, or null if processing failed.</returns>
+        /// <returns>The processed catalog entry as JSONElement, or null if processing failed.</returns>
         private async Task<JsonElement?> ProcessCatalogEntry(
             JsonElement catalogEntry,
             string operationId,
@@ -252,10 +251,10 @@ namespace NuGetInspectorApp.Services
         }
 
         /// <summary>
-        /// Extracts metadata from JSON elements with comprehensive error handling.
+        /// Extracts Metadata from JSON elements with comprehensive error handling.
         /// </summary>
         private void ExtractMetadataWithErrorHandling(
-            PackageMetadata meta,
+            PackageMetaData meta,
             JsonElement details,
             JsonElement root,
             string operationId,
@@ -271,7 +270,7 @@ namespace NuGetInspectorApp.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("[{OperationId}] Error extracting project URL for {PackageId} {Version}: {Error}",
+                _logger.LogWarning(ex, "[{OperationId}] Error extracting project URL for {PackageId} {Version}: {Error}",
                     operationId, id, version, ex.Message);
             }
 
@@ -285,7 +284,7 @@ namespace NuGetInspectorApp.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("[{OperationId}] Error extracting dependency groups for {PackageId} {Version}: {Error}",
+                _logger.LogWarning(ex, "[{OperationId}] Error extracting dependency groups for {PackageId} {Version}: {Error}",
                     operationId, id, version, ex.Message);
                 // Ensure DependencyGroups is not null even if extraction fails
                 meta.DependencyGroups ??= new List<DependencyGroup>();
@@ -307,8 +306,7 @@ namespace NuGetInspectorApp.Services
             string? operationId = null)
         {
             var attempt = 0;
-            var delay = TimeSpan.FromSeconds(_configuration.RetryDelaySeconds);
-            Exception? lastException = null;
+            var delay = TimeSpan.FromSeconds(_settings.RetryDelaySeconds);
 
             while (true)
             {
@@ -331,7 +329,7 @@ namespace NuGetInspectorApp.Services
                     }
 
                     // Retryable HTTP error
-                    if (attempt > _configuration.MaxRetryAttempts)
+                    if (attempt > _settings.MaxRetryAttempts)
                     {
                         _logger.LogWarning("[{OperationId}] Failed to {Operation} after {Attempts} attempts. Final status: {StatusCode}",
                             operationId, operationName, attempt, response.StatusCode);
@@ -342,14 +340,12 @@ namespace NuGetInspectorApp.Services
                         operationId, attempt, operationName, response.StatusCode, delay.TotalMilliseconds);
 
                     response.Dispose();
-                    lastException = new HttpRequestException($"HTTP {response.StatusCode}");
                 }
                 catch (HttpRequestException ex)
                 {
-                    lastException = ex;
-                    if (attempt > _configuration.MaxRetryAttempts)
+                    if (attempt > _settings.MaxRetryAttempts)
                     {
-                        _logger.LogWarning("[{OperationId}] Failed to {Operation} after {Attempts} attempts due to network error: {Error}",
+                        _logger.LogWarning(ex, "[{OperationId}] Failed to {Operation} after {Attempts} attempts due to network error: {Error}",
                             operationId, operationName, attempt, ex.Message);
                         throw;
                     }
@@ -359,10 +355,9 @@ namespace NuGetInspectorApp.Services
                 }
                 catch (TaskCanceledException ex) when (!ex.CancellationToken.IsCancellationRequested)
                 {
-                    lastException = ex;
-                    if (attempt > _configuration.MaxRetryAttempts)
+                    if (attempt > _settings.MaxRetryAttempts)
                     {
-                        _logger.LogWarning("[{OperationId}] Failed to {Operation} after {Attempts} attempts due to timeout",
+                        _logger.LogWarning(ex, "[{OperationId}] Failed to {Operation} after {Attempts} attempts due to timeout",
                             operationId, operationName, attempt);
                         throw new TimeoutException($"Operation '{operationName}' timed out after {attempt} attempts", ex);
                     }
@@ -373,7 +368,7 @@ namespace NuGetInspectorApp.Services
                 catch (TaskCanceledException ex) when (ex.CancellationToken.IsCancellationRequested)
                 {
                     // User-requested cancellation, don't retry
-                    _logger.LogDebug("[{OperationId}] {Operation} cancelled by user on attempt {Attempt}",
+                    _logger.LogDebug(ex, "[{OperationId}] {Operation} cancelled by user on attempt {Attempt}",
                         operationId, operationName, attempt);
                     throw;
                 }
@@ -384,8 +379,8 @@ namespace NuGetInspectorApp.Services
 
                 // Exponential backoff
                 delay = TimeSpan.FromSeconds(Math.Min(
-                    delay.TotalSeconds * _configuration.RetryBackoffFactor,
-                    _configuration.MaxRetryDelaySeconds));
+                    delay.TotalSeconds * _settings.RetryBackoffFactor,
+                    _settings.MaxRetryDelaySeconds));
             }
         }
 
@@ -415,7 +410,7 @@ namespace NuGetInspectorApp.Services
         /// <returns>The delay with jitter applied.</returns>
         private TimeSpan CalculateDelayWithJitter(TimeSpan baseDelay)
         {
-            if (!_configuration.UseRetryJitter)
+            if (!_settings.UseRetryJitter)
                 return baseDelay;
 
             // Add up to 25% jitter
@@ -460,7 +455,7 @@ namespace NuGetInspectorApp.Services
         /// </summary>
         /// <param name="url">The catalog URL to validate.</param>
         /// <returns>True if the URL is considered safe.</returns>
-        private bool IsValidCatalogUrl(string url)
+        private static bool IsValidCatalogUrl(string url)
         {
             if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
                 return false;
@@ -477,26 +472,26 @@ namespace NuGetInspectorApp.Services
         /// <summary>
         /// Creates an optimized HttpClient for NuGet API requests.
         /// </summary>
-        /// <param name="configuration">The application configuration.</param>
+        /// <param name="settings">The application settings.</param>
         /// <returns>A configured HttpClient instance.</returns>
-        private static HttpClient CreateOptimizedHttpClient(AppConfiguration configuration)
+        private static HttpClient CreateOptimizedHttpClient(AppSettings settings)
         {
             var handler = new HttpClientHandler
             {
                 AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
-                MaxConnectionsPerServer = configuration.MaxConcurrentRequests
+                MaxConnectionsPerServer = settings.MaxConcurrentRequests
             };
 
             return new HttpClient(handler, disposeHandler: true);
         }
 
         /// <summary>
-        /// Extracts the project URL from the package metadata.
+        /// Extracts the project URL from the package Metadata.
         /// </summary>
-        /// <param name="meta">The package metadata to update.</param>
+        /// <param name="meta">The package Metadata to update.</param>
         /// <param name="details">The details JSON element.</param>
         /// <param name="root">The root JSON element.</param>
-        private static void ExtractProjectUrl(PackageMetadata meta, JsonElement details, JsonElement root)
+        private static void ExtractProjectUrl(PackageMetaData meta, JsonElement details, JsonElement root)
         {
             // Try details first (catalog entry)
             if (details.TryGetProperty("projectUrl", out var pu) && pu.ValueKind == JsonValueKind.String)
@@ -523,11 +518,11 @@ namespace NuGetInspectorApp.Services
         }
 
         /// <summary>
-        /// Extracts dependency groups from the package metadata.
+        /// Extracts dependency groups from the package Metadata.
         /// </summary>
-        /// <param name="meta">The package metadata to update.</param>
+        /// <param name="meta">The package Metadata to update.</param>
         /// <param name="details">The details JSON element containing dependency information.</param>
-        private static void ExtractDependencyGroups(PackageMetadata meta, JsonElement details)
+        private static void ExtractDependencyGroups(PackageMetaData meta, JsonElement details)
         {
             if (!details.TryGetProperty("dependencyGroups", out var dgArr) || dgArr.ValueKind != JsonValueKind.Array)
                 return;

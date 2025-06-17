@@ -3,7 +3,7 @@ namespace NuGetInspectorApp.Configuration
     /// <summary>
     /// Configuration settings for the NuGet Inspector application.
     /// </summary>
-    public class AppConfiguration
+    public class AppSettings
     {
         /// <summary>
         /// Gets or sets the base URL for the NuGet API registration endpoint.
@@ -62,6 +62,8 @@ namespace NuGetInspectorApp.Configuration
         /// <summary>
         /// Validates the configuration settings and throws exceptions if any values are out of range.
         /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when a value is out of the allowed range.</exception>
+        /// <exception cref="ArgumentException">Thrown when a URL is invalid.</exception>
         public void Validate()
         {
             if (HttpTimeoutSeconds <= 0 || HttpTimeoutSeconds > 300)

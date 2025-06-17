@@ -1,5 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NuGetInspectorApp.Configuration;
 using NuGetInspectorApp.Formatters;
@@ -11,43 +9,45 @@ namespace NuGetInspectorApp.Application;
 /// <summary>
 /// Provides the main application logic for analyzing NuGet packages in .NET solutions.
 /// </summary>
+/// 
 /// <remarks>
 /// This class orchestrates the entire package analysis workflow, including:
 /// <list type="bullet">
 /// <item><description>Fetching package reports from dotnet CLI commands</description></item>
 /// <item><description>Merging data from multiple report types (outdated, deprecated, vulnerable)</description></item>
-/// <item><description>Fetching detailed metadata from the NuGet API</description></item>
+/// <item><description>Fetching detailed Metadata from the NuGet API</description></item>
 /// <item><description>Applying user-specified filters</description></item>
 /// <item><description>Formatting and outputting results</description></item>
 /// </list>
 /// </remarks>
 public class NuGetAuditApplication
 {
-    private readonly INuGetApiService _nugetService;
+    private readonly INuGetApiService _nuGetService;
     private readonly IPackageAnalyzer _analyzer;
-    private readonly IDotNetService _dotnetService;
+    private readonly IDotNetService _dotNetService;
     private readonly IReportFormatter _formatter;
     private readonly ILogger<NuGetAuditApplication> _logger;
+    // Correct the interface name to match the expected type
 
     /// <summary>
     /// Initializes a new instance of the <see cref="NuGetAuditApplication"/> class.
     /// </summary>
-    /// <param name="nugetService">The service for fetching package metadata from NuGet API.</param>
+    /// <param name="nuGetService">The service for fetching package Metadata from NuGet API.</param>
     /// <param name="analyzer">The service for merging package information from different reports.</param>
-    /// <param name="dotnetService">The service for executing dotnet CLI commands.</param>
+    /// <param name="dotNetService">The service for executing dotnet CLI commands.</param>
     /// <param name="formatter">The service for formatting output reports.</param>
     /// <param name="logger">The logger for recording application events.</param>
     /// <exception cref="ArgumentNullException">Thrown when any of the required services is null.</exception>
     public NuGetAuditApplication(
-        INuGetApiService nugetService,
+        INuGetApiService nuGetService, // Corrected interface name
         IPackageAnalyzer analyzer,
-        IDotNetService dotnetService,
+        IDotNetService dotNetService,
         IReportFormatter formatter,
         ILogger<NuGetAuditApplication> logger)
     {
-        _nugetService = nugetService ?? throw new ArgumentNullException(nameof(nugetService));
+        _nuGetService = nuGetService ?? throw new ArgumentNullException(nameof(nuGetService));
         _analyzer = analyzer ?? throw new ArgumentNullException(nameof(analyzer));
-        _dotnetService = dotnetService ?? throw new ArgumentNullException(nameof(dotnetService));
+        _dotNetService = dotNetService ?? throw new ArgumentNullException(nameof(dotNetService));
         _formatter = formatter ?? throw new ArgumentNullException(nameof(formatter));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -120,8 +120,8 @@ public class NuGetAuditApplication
                     operationId, mergedPackages.Count, totalPackages);
             }
 
-            // Fetch metadata for all unique packages in parallel
-            _logger.LogDebug("[{OperationId}] Fetching package metadata from NuGet API", operationId);
+            // Fetch Metadata for all unique packages in parallel
+            _logger.LogDebug("[{OperationId}] Fetching package Metadata from NuGet API", operationId);
             var packageMetadata = await FetchAllPackageMetadataAsync(mergedPackages, operationId, cancellationToken);
 
             // Format and output results
@@ -152,9 +152,9 @@ public class NuGetAuditApplication
             _logger.LogInformation("[{OperationId}] NuGet audit completed successfully", operationId);
             return 0;
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
-            _logger.LogWarning("[{OperationId}] Operation was cancelled", operationId);
+            _logger.LogWarning(ex, "[{OperationId}] Operation was cancelled", operationId);
             return 1;
         }
         catch (Exception ex)
@@ -172,12 +172,12 @@ public class NuGetAuditApplication
     /// <param name="operationId">The operation ID for logging correlation.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The fetched report or null if an error occurred.</returns>
-    private async Task<DotnetListReport?> FetchReportWithErrorHandling(string solutionPath, string reportType, string operationId, CancellationToken cancellationToken)
+    private async Task<DotNetListReport?> FetchReportWithErrorHandling(string solutionPath, string reportType, string operationId, CancellationToken cancellationToken)
     {
         try
         {
             _logger.LogDebug("[{OperationId}] Fetching {ReportType} report for solution {SolutionPath}", operationId, reportType, solutionPath);
-            var report = await _dotnetService.GetPackageReportAsync(solutionPath, reportType, cancellationToken);
+            var report = await _dotNetService.GetPackageReportAsync(solutionPath, reportType, cancellationToken);
 
             if (report?.Projects == null)
             {
@@ -200,9 +200,9 @@ public class NuGetAuditApplication
     /// Merges packages from multiple reports with enhanced error handling.
     /// </summary>
     private Dictionary<string, Dictionary<string, MergedPackage>> MergePackagesWithErrorHandling(
-        DotnetListReport outdatedRpt,
-        DotnetListReport deprecatedRpt,
-        DotnetListReport vulnRpt,
+        DotNetListReport outdatedRpt,
+        DotNetListReport deprecatedRpt,
+        DotNetListReport vulnRpt,
         CommandLineOptions options,
         string operationId,
         CancellationToken cancellationToken)
@@ -336,7 +336,7 @@ public class NuGetAuditApplication
     }
 
     /// <summary>
-    /// Fetches detailed metadata from the NuGet API for all unique packages in the merged package collection.
+    /// Fetches detailed Metadata from the NuGet API for all unique packages in the merged package collection.
     /// </summary>
     /// <param name="mergedPackages">
     /// A dictionary containing merged package information keyed by "{ProjectPath}|{Framework}",
@@ -346,9 +346,9 @@ public class NuGetAuditApplication
     /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
     /// <returns>
     /// A task that represents the asynchronous operation. The task result contains a dictionary
-    /// of package metadata keyed by "{PackageId}|{Version}" for efficient lookup.
+    /// of package Metadata keyed by "{PackageId}|{Version}" for efficient lookup.
     /// </returns>
-    private async Task<Dictionary<string, PackageMetadata>> FetchAllPackageMetadataAsync(
+    private async Task<Dictionary<string, PackageMetaData>> FetchAllPackageMetadataAsync(
         Dictionary<string, Dictionary<string, MergedPackage>> mergedPackages,
         string operationId,
         CancellationToken cancellationToken = default)
@@ -359,12 +359,12 @@ public class NuGetAuditApplication
             .DistinctBy(pkg => $"{pkg.Id}|{pkg.ResolvedVersion}")
             .ToList();
 
-        _logger.LogDebug("[{OperationId}] Fetching metadata for {UniquePackageCount} unique packages", operationId, uniquePackages.Count);
+        _logger.LogDebug("[{OperationId}] Fetching Metadata for {UniquePackageCount} unique packages", operationId, uniquePackages.Count);
 
         if (uniquePackages.Count == 0)
         {
-            _logger.LogWarning("[{OperationId}] No valid packages found for metadata fetching", operationId);
-            return new Dictionary<string, PackageMetadata>();
+            _logger.LogWarning("[{OperationId}] No valid packages found for Metadata fetching", operationId);
+            return new Dictionary<string, PackageMetaData>();
         }
 
         var semaphore = new SemaphoreSlim(5); // Limit concurrent requests
@@ -376,19 +376,19 @@ public class NuGetAuditApplication
             await semaphore.WaitAsync(cancellationToken);
             try
             {
-                var meta = await _nugetService.FetchPackageMetadataAsync(pkg.Id, pkg.ResolvedVersion!, cancellationToken);
+                var meta = await _nuGetService.FetchPackageMetaDataAsync(pkg.Id, pkg.ResolvedVersion!, cancellationToken);
                 Interlocked.Increment(ref successCount);
-                return new KeyValuePair<string, PackageMetadata>($"{pkg.Id}|{pkg.ResolvedVersion}", meta);
+                return new KeyValuePair<string, PackageMetaData>($"{pkg.Id}|{pkg.ResolvedVersion}", meta);
             }
             catch (Exception ex)
             {
                 Interlocked.Increment(ref failureCount);
-                _logger.LogWarning(ex, "[{OperationId}] Failed to fetch metadata for package {PackageId} {Version}",
+                _logger.LogWarning(ex, "[{OperationId}] Failed to fetch Metadata for package {PackageId} {Version}",
                     operationId, pkg.Id, pkg.ResolvedVersion);
 
-                // Return minimal metadata on failure
-                return new KeyValuePair<string, PackageMetadata>($"{pkg.Id}|{pkg.ResolvedVersion}",
-                    new PackageMetadata
+                // Return minimal Metadata on failure
+                return new KeyValuePair<string, PackageMetaData>($"{pkg.Id}|{pkg.ResolvedVersion}",
+                    new PackageMetaData
                     {
                         PackageUrl = $"https://www.nuget.org/packages/{pkg.Id}/{pkg.ResolvedVersion}",
                         DependencyGroups = new List<DependencyGroup>()
@@ -403,7 +403,7 @@ public class NuGetAuditApplication
         var results = await Task.WhenAll(tasks);
         semaphore.Dispose();
 
-        _logger.LogInformation("[{OperationId}] Package metadata fetch completed. Success: {SuccessCount}, Failures: {FailureCount}",
+        _logger.LogInformation("[{OperationId}] Package Metadata fetch completed. Success: {SuccessCount}, Failures: {FailureCount}",
             operationId, successCount, failureCount);
 
         return results.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);

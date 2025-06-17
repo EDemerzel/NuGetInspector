@@ -1,7 +1,7 @@
-using System.Diagnostics;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using NuGetInspectorApp.Models;
+using System.Diagnostics;
+using System.Text.Json;
 
 namespace NuGetInspectorApp.Services
 {
@@ -34,7 +34,7 @@ namespace NuGetInspectorApp.Services
         /// <param name="reportType">The type of report to generate (e.g., "--outdated", "--deprecated", "--vulnerable").</param>
         /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
         /// <returns>
-        /// A task that represents the asynchronous operation. The task result contains a <see cref="DotnetListReport"/>
+        /// A task that represents the asynchronous operation. The task result contains a <see cref="DotNetListReport"/>
         /// object with the parsed package information, or <c>null</c> if the operation fails.
         /// </returns>
         /// <remarks>
@@ -47,15 +47,16 @@ namespace NuGetInspectorApp.Services
         /// </list>
         /// </remarks>
         /// <exception cref="ArgumentException">Thrown when <paramref name="solutionPath"/> or <paramref name="reportType"/> is null or empty.</exception>
-        public async Task<DotnetListReport?> GetPackageReportAsync(string solutionPath, string reportType, CancellationToken cancellationToken = default)
+        public async Task<DotNetListReport?> GetPackageReportAsync(string solutionPath, string reportType, CancellationToken cancellationToken = default)
         {
-            var json = await RunDotnetListJsonAsync(solutionPath, reportType, cancellationToken);
-            if (json == null) return null;
+            var json = await RunDotnetListJSONAsync(solutionPath, reportType, cancellationToken);
+            if (json == null)
+                return null;
 
             try
             {
                 var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                return JsonSerializer.Deserialize<DotnetListReport>(json, opts);
+                return JsonSerializer.Deserialize<DotNetListReport>(json, opts);
             }
             catch (JsonException ex)
             {
@@ -83,7 +84,7 @@ namespace NuGetInspectorApp.Services
         /// higher-level GetPackageReportAsync method.
         /// </para>
         /// </remarks>
-        private async Task<string?> RunDotnetListJsonAsync(string solution, string flag, CancellationToken cancellationToken)
+        private async Task<string?> RunDotnetListJSONAsync(string solution, string flag, CancellationToken cancellationToken)
         {
             var psi = new ProcessStartInfo("dotnet",
                 $"list \"{solution}\" package {flag} --include-transitive --format json")

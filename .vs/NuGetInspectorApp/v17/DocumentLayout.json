@@ -3,8 +3,40 @@
   "WorkspaceRootPath": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{935B8DFD-9519-4089-B605-52D0596AC623}|NuGetInspectorApp\\NuGetInspectorApp.csproj|c:\\users\\rofli\\iclouddrive\\source\\nugetinspectorapp\\nugetinspectorapp\\services\\nugetapiservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{935B8DFD-9519-4089-B605-52D0596AC623}|NuGetInspectorApp\\NuGetInspectorApp.csproj|solutionrelative:nugetinspectorapp\\services\\nugetapiservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{935B8DFD-9519-4089-B605-52D0596AC623}|NuGetInspectorApp\\NuGetInspectorApp.csproj|c:\\users\\rofli\\iclouddrive\\source\\nugetinspectorapp\\nugetinspectorapp\\configuration\\configuration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{935B8DFD-9519-4089-B605-52D0596AC623}|NuGetInspectorApp\\NuGetInspectorApp.csproj|solutionrelative:nugetinspectorapp\\configuration\\configuration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E8B4C8F1-2F3A-4D5E-8A9B-1C7D6E4F9A2B}|NuGetInspectorApp.Tests\\NuGetInspectorApp.Tests.csproj|c:\\users\\rofli\\iclouddrive\\source\\nugetinspectorapp\\nugetinspectorapp.tests\\services\\dotnetservicetests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E8B4C8F1-2F3A-4D5E-8A9B-1C7D6E4F9A2B}|NuGetInspectorApp.Tests\\NuGetInspectorApp.Tests.csproj|solutionrelative:nugetinspectorapp.tests\\services\\dotnetservicetests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E8B4C8F1-2F3A-4D5E-8A9B-1C7D6E4F9A2B}|NuGetInspectorApp.Tests\\NuGetInspectorApp.Tests.csproj|c:\\users\\rofli\\iclouddrive\\source\\nugetinspectorapp\\nugetinspectorapp.tests\\nugetauditapplicationtests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E8B4C8F1-2F3A-4D5E-8A9B-1C7D6E4F9A2B}|NuGetInspectorApp.Tests\\NuGetInspectorApp.Tests.csproj|solutionrelative:nugetinspectorapp.tests\\nugetauditapplicationtests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E8B4C8F1-2F3A-4D5E-8A9B-1C7D6E4F9A2B}|NuGetInspectorApp.Tests\\NuGetInspectorApp.Tests.csproj|c:\\users\\rofli\\iclouddrive\\source\\nugetinspectorapp\\nugetinspectorapp.tests\\services\\nugetapiservicetests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E8B4C8F1-2F3A-4D5E-8A9B-1C7D6E4F9A2B}|NuGetInspectorApp.Tests\\NuGetInspectorApp.Tests.csproj|solutionrelative:nugetinspectorapp.tests\\services\\nugetapiservicetests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{935B8DFD-9519-4089-B605-52D0596AC623}|NuGetInspectorApp\\NuGetInspectorApp.csproj|c:\\users\\rofli\\iclouddrive\\source\\nugetinspectorapp\\nugetinspectorapp\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{935B8DFD-9519-4089-B605-52D0596AC623}|NuGetInspectorApp\\NuGetInspectorApp.csproj|solutionrelative:nugetinspectorapp\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{935B8DFD-9519-4089-B605-52D0596AC623}|NuGetInspectorApp\\NuGetInspectorApp.csproj|c:\\users\\rofli\\iclouddrive\\source\\nugetinspectorapp\\nugetinspectorapp\\nugetauditapplication.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{935B8DFD-9519-4089-B605-52D0596AC623}|NuGetInspectorApp\\NuGetInspectorApp.csproj|solutionrelative:nugetinspectorapp\\nugetauditapplication.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{935B8DFD-9519-4089-B605-52D0596AC623}|NuGetInspectorApp\\NuGetInspectorApp.csproj|c:\\users\\rofli\\iclouddrive\\source\\nugetinspectorapp\\nugetinspectorapp\\services\\inugetapiservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{935B8DFD-9519-4089-B605-52D0596AC623}|NuGetInspectorApp\\NuGetInspectorApp.csproj|solutionrelative:nugetinspectorapp\\services\\inugetapiservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{935B8DFD-9519-4089-B605-52D0596AC623}|NuGetInspectorApp\\NuGetInspectorApp.csproj|c:\\users\\rofli\\iclouddrive\\source\\nugetinspectorapp\\nugetinspectorapp\\formatters\\consolereportformatter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{935B8DFD-9519-4089-B605-52D0596AC623}|NuGetInspectorApp\\NuGetInspectorApp.csproj|solutionrelative:nugetinspectorapp\\formatters\\consolereportformatter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -14,7 +46,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 2,
           "Children": [
             {
               "$type": "Bookmark",
@@ -22,24 +54,120 @@
             },
             {
               "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "NuGetAuditApplication.cs",
+              "DocumentMoniker": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp\\NuGetAuditApplication.cs",
+              "RelativeDocumentMoniker": "NuGetInspectorApp\\NuGetAuditApplication.cs",
+              "ToolTip": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp\\NuGetAuditApplication.cs",
+              "RelativeToolTip": "NuGetInspectorApp\\NuGetAuditApplication.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAEAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-17T12:22:05.232Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "NuGetApiService.cs",
+              "DocumentMoniker": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp\\Services\\NuGetApiService.cs",
+              "RelativeDocumentMoniker": "NuGetInspectorApp\\Services\\NuGetApiService.cs",
+              "ToolTip": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp\\Services\\NuGetApiService.cs",
+              "RelativeToolTip": "NuGetInspectorApp\\Services\\NuGetApiService.cs",
+              "ViewState": "AgIAAF4BAAAAAAAAAAAnwHQBAAAaAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-17T12:08:24.107Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp\\Program.cs",
               "RelativeDocumentMoniker": "NuGetInspectorApp\\Program.cs",
               "ToolTip": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp\\Program.cs",
               "RelativeToolTip": "NuGetInspectorApp\\Program.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAADUBAAAAAAAAAAAWwEUBAABBAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-16T21:54:56.958Z",
+              "WhenOpened": "2025-06-17T12:06:15.683Z",
               "EditorCaption": ""
             },
             {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{d84ee353-0bef-5a41-a649-8f89aca5d84d}"
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "NuGetAuditApplicationTests.cs",
+              "DocumentMoniker": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp.Tests\\NuGetAuditApplicationTests.cs",
+              "RelativeDocumentMoniker": "NuGetInspectorApp.Tests\\NuGetAuditApplicationTests.cs",
+              "ToolTip": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp.Tests\\NuGetAuditApplicationTests.cs",
+              "RelativeToolTip": "NuGetInspectorApp.Tests\\NuGetAuditApplicationTests.cs",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAAAgAAAAbAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-17T12:05:00.062Z",
+              "EditorCaption": ""
             },
             {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "NuGetApiServiceTests.cs",
+              "DocumentMoniker": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp.Tests\\Services\\NuGetApiServiceTests.cs",
+              "RelativeDocumentMoniker": "NuGetInspectorApp.Tests\\Services\\NuGetApiServiceTests.cs",
+              "ToolTip": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp.Tests\\Services\\NuGetApiServiceTests.cs",
+              "RelativeToolTip": "NuGetInspectorApp.Tests\\Services\\NuGetApiServiceTests.cs",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAvwBAAAAAZAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-17T12:03:00.247Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "DotNetServiceTests.cs",
+              "DocumentMoniker": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp.Tests\\Services\\DotNetServiceTests.cs",
+              "RelativeDocumentMoniker": "NuGetInspectorApp.Tests\\Services\\DotNetServiceTests.cs",
+              "ToolTip": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp.Tests\\Services\\DotNetServiceTests.cs",
+              "RelativeToolTip": "NuGetInspectorApp.Tests\\Services\\DotNetServiceTests.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAtAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-17T12:03:05.133Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Configuration.cs",
+              "DocumentMoniker": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp\\Configuration\\Configuration.cs",
+              "RelativeDocumentMoniker": "NuGetInspectorApp\\Configuration\\Configuration.cs",
+              "ToolTip": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp\\Configuration\\Configuration.cs",
+              "RelativeToolTip": "NuGetInspectorApp\\Configuration\\Configuration.cs",
+              "ViewState": "AgIAAE0AAAAAAAAAAAAowF0AAAAWAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-17T11:57:53.728Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "INuGetApiService.cs",
+              "DocumentMoniker": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp\\Services\\INuGetApiService.cs",
+              "RelativeDocumentMoniker": "NuGetInspectorApp\\Services\\INuGetApiService.cs",
+              "ToolTip": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp\\Services\\INuGetApiService.cs",
+              "RelativeToolTip": "NuGetInspectorApp\\Services\\INuGetApiService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAmwAcAAAAeAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-17T12:07:55.978Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "ConsoleReportFormatter.cs",
+              "DocumentMoniker": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp\\Formatters\\ConsoleReportFormatter.cs",
+              "RelativeDocumentMoniker": "NuGetInspectorApp\\Formatters\\ConsoleReportFormatter.cs",
+              "ToolTip": "C:\\Users\\rofli\\iCloudDrive\\Source\\NuGetInspectorApp\\NuGetInspectorApp\\Formatters\\ConsoleReportFormatter.cs",
+              "RelativeToolTip": "NuGetInspectorApp\\Formatters\\ConsoleReportFormatter.cs",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAlwCYAAABCAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-17T12:07:49.714Z",
+              "EditorCaption": ""
             }
           ]
         }

@@ -9,7 +9,7 @@ namespace NuGetInspectorApp.Services
     /// This service interface abstracts the process of combining data from outdated, deprecated,
     /// and vulnerable package reports to create a unified view of package status across different
     /// analysis types. Implementations should handle the complexity of merging overlapping package
-    /// information while preserving all relevant metadata from each report type.
+    /// information while preserving all relevant Metadata from each report type.
     /// </remarks>
     public interface IPackageAnalyzer
     {

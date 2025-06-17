@@ -8,7 +8,7 @@ namespace NuGetInspectorApp.Formatters
     /// <remarks>
     /// Implementations of this interface are responsible for taking the raw package analysis data
     /// and converting it into a human-readable or machine-readable format. The formatter receives
-    /// project information, merged package data, and detailed package metadata to create comprehensive reports.
+    /// project information, merged package data, and detailed package Metadata to create comprehensive reports.
     /// </remarks>
     public interface IReportFormatter
     {
@@ -21,7 +21,7 @@ namespace NuGetInspectorApp.Formatters
         /// with values being dictionaries of packages keyed by package ID.
         /// </param>
         /// <param name="packageMetadata">
-        /// A dictionary of detailed package metadata keyed by "{PackageId}|{Version}",
+        /// A dictionary of detailed package Metadata keyed by "{PackageId}|{Version}",
         /// containing additional information fetched from the NuGet API.
         /// </param>
         /// <param name="cancellationToken">A cancellation token to cancel the formatting operation.</param>
@@ -39,14 +39,14 @@ namespace NuGetInspectorApp.Formatters
         /// <example>
         /// <code>
         /// var formatter = new ConsoleReportFormatter();
-        /// var report = await formatter.FormatReportAsync(projects, mergedPackages, metadata);
+        /// var report = await formatter.FormatReportAsync(projects, mergedPackages, Metadata);
         /// Console.WriteLine(report);
         /// </code>
         /// </example>
         Task<string> FormatReportAsync(
             List<ProjectInfo> projects,
             Dictionary<string, Dictionary<string, MergedPackage>> mergedPackages,
-            Dictionary<string, PackageMetadata> packageMetadata,
+            Dictionary<string, PackageMetaData> packageMetadata,
             CancellationToken cancellationToken = default);
     }
 }

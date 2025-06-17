@@ -19,7 +19,7 @@ public interface IDotNetService
     /// <param name="reportType">The type of report to generate (e.g., "--outdated", "--deprecated", "--vulnerable").</param>
     /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
     /// <returns>
-    /// A task that represents the asynchronous operation. The task result contains a <see cref="DotnetListReport"/>
+    /// A task that represents the asynchronous operation. The task result contains a <see cref="DotNetListReport"/>
     /// object with the parsed package information, or <c>null</c> if the operation fails.
     /// </returns>
     /// <remarks>
@@ -33,5 +33,5 @@ public interface IDotNetService
     /// </remarks>
     /// <exception cref="ArgumentException">Thrown when <paramref name="solutionPath"/> or <paramref name="reportType"/> is null or empty.</exception>
     /// <exception cref="InvalidOperationException">Thrown when the dotnet CLI is not available or returns an unexpected format.</exception>
-    Task<DotnetListReport?> GetPackageReportAsync(string solutionPath, string reportType, CancellationToken cancellationToken = default);
+    Task<DotNetListReport?> GetPackageReportAsync(string solutionPath, string reportType, CancellationToken cancellationToken = default);
 }

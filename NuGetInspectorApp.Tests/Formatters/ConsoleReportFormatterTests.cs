@@ -1,10 +1,5 @@
 using NuGetInspectorApp.Formatters;
 using NuGetInspectorApp.Models;
-using NUnit.Framework;
-using FluentAssertions;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Threading;
 
 namespace NuGetInspectorApp.Tests.Formatters
 {
@@ -25,10 +20,10 @@ namespace NuGetInspectorApp.Tests.Formatters
             // Arrange
             var projects = CreateTestProjects();
             var mergedPackages = CreateMergedPackages();
-            var metadata = CreatePackageMetadata();
+            var Metadata = CreatePackageMetadata();
 
             // Act
-            var result = await _formatter.FormatReportAsync(projects, mergedPackages, metadata, CancellationToken.None);
+            var result = await _formatter.FormatReportAsync(projects, mergedPackages, Metadata, CancellationToken.None);
 
             // Assert
             result.Should().NotBeNullOrEmpty("because we provided valid data");
@@ -41,22 +36,22 @@ namespace NuGetInspectorApp.Tests.Formatters
             // Arrange
             var projects = new List<ProjectInfo>();
             var mergedPackages = new Dictionary<string, Dictionary<string, MergedPackage>>();
-            var metadata = new Dictionary<string, PackageMetadata>();
+            var Metadata = new Dictionary<string, PackageMetaData>();
 
             // Act
-            var result = await _formatter.FormatReportAsync(projects, mergedPackages, metadata, CancellationToken.None);
+            var result = await _formatter.FormatReportAsync(projects, mergedPackages, Metadata, CancellationToken.None);
 
             // Assert
             result.Should().BeEmpty("because there are no projects to format");
         }
 
         [Test]
-        public async Task FormatReportAsync_WithMissingPackageMetadata_StillReturnsReport()
+        public async Task FormatReportAsync_WithMissingPackageMetaData_StillReturnsReport()
         {
             // Arrange
             var projects = CreateTestProjects();
             var mergedPackages = CreateMergedPackages();
-            var emptyMetadata = new Dictionary<string, PackageMetadata>();
+            var emptyMetadata = new Dictionary<string, PackageMetaData>();
 
             // Act
             var result = await _formatter.FormatReportAsync(projects, mergedPackages, emptyMetadata, CancellationToken.None);
@@ -73,12 +68,12 @@ namespace NuGetInspectorApp.Tests.Formatters
         {
             // Arrange
             var projects = CreateMultiFrameworkProjects();
-            // Ensure mergedPackages and metadata cover the multi-framework scenario
+            // Ensure mergedPackages and Metadata cover the multi-framework scenario
             var mergedPackages = CreateMultiFrameworkMergedPackages();
-            var metadata = CreatePackageMetadata(); // Ensure metadata for "MultiPackage" if needed
+            var Metadata = CreatePackageMetadata(); // Ensure Metadata for "MultiPackage" if needed
 
             // Act
-            var result = await _formatter.FormatReportAsync(projects, mergedPackages, metadata, CancellationToken.None);
+            var result = await _formatter.FormatReportAsync(projects, mergedPackages, Metadata, CancellationToken.None);
 
             // Assert
             result.Should().Contain("net7.0")
@@ -174,18 +169,18 @@ namespace NuGetInspectorApp.Tests.Formatters
             return merged;
         }
 
-        private static Dictionary<string, PackageMetadata> CreatePackageMetadata()
+        private static Dictionary<string, PackageMetaData> CreatePackageMetadata()
         {
-            var metadata = new Dictionary<string, PackageMetadata>();
-            metadata["SamplePackage|1.0.0"] = new PackageMetadata
+            var Metadata = new Dictionary<string, PackageMetaData>();
+            Metadata["SamplePackage|1.0.0"] = new PackageMetaData
             {
                 PackageUrl = "https://www.nuget.org/packages/SamplePackage/1.0.0"
             };
-            metadata["MultiPackage|2.0.0"] = new PackageMetadata // For multi-framework test
+            Metadata["MultiPackage|2.0.0"] = new PackageMetaData // For multi-framework test
             {
                 PackageUrl = "https://www.nuget.org/packages/MultiPackage/2.0.0"
             };
-            return metadata;
+            return Metadata;
         }
     }
 }
