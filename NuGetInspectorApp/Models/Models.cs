@@ -167,6 +167,13 @@ namespace NuGetInspectorApp.Models
         public string? LatestVersion { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether the resolved version is outdated.
+        /// This property is typically calculated by comparing ResolvedVersion and LatestVersion.
+        /// </summary>
+        /// <value><c>true</c> if a newer version is available; otherwise, <c>false</c>.</value>
+        public bool IsOutdated { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether the package has known vulnerabilities.
         /// </summary>
         /// <value><c>true</c> if the package version has reported security vulnerabilities; otherwise, <c>false</c>.</value>
@@ -231,7 +238,7 @@ namespace NuGetInspectorApp.Models
         /// </summary>
         /// <value>The vulnerability severity classification such as "Low", "Medium", "High", or "Critical".</value>
         [JsonPropertyName("severity")]
-        public string Severity { get; set; } = "";
+        public string Severity { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the URL to the security advisory with detailed information.
@@ -239,7 +246,7 @@ namespace NuGetInspectorApp.Models
         /// <value>A URL pointing to the official security advisory or vulnerability database entry.</value>
         /// <example>https://github.com/advisories/GHSA-xxxx-xxxx-xxxx</example>
         [JsonPropertyName("advisoryUrl")]
-        public string AdvisoryUrl { get; set; } = "";
+        public string? AdvisoryUrl { get; set; }
     }
 
     /// <summary>
@@ -257,7 +264,7 @@ namespace NuGetInspectorApp.Models
         /// <value>The package ID of the recommended replacement.</value>
         /// <example>System.Text.Json (as an alternative to Newtonsoft.Json)</example>
         [JsonPropertyName("id")]
-        public string Id { get; set; } = "";
+        public string Id { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the recommended version range for the alternative package.
@@ -265,7 +272,7 @@ namespace NuGetInspectorApp.Models
         /// <value>The version specification for the alternative package, typically a minimum version requirement.</value>
         /// <example>>=6.0.0</example>
         [JsonPropertyName("versionRange")]
-        public string VersionRange { get; set; } = "";
+        public string? VersionRange { get; set; }
     }
 
     /// <summary>

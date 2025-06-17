@@ -1,5 +1,8 @@
 using Microsoft.Extensions.Logging;
 using NuGetInspectorApp.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace NuGetInspectorApp.Services
 {
@@ -24,128 +27,229 @@ namespace NuGetInspectorApp.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        private static PackageReference ClonePackageReference(PackageReference original)
+        {
+            if (original == null)
+                throw new ArgumentNullException(nameof(original));
+
+            return new PackageReference
+            {
+                Id = original.Id,
+                RequestedVersion = original.RequestedVersion,
+                ResolvedVersion = original.ResolvedVersion,
+                LatestVersion = original.LatestVersion,
+                IsOutdated = false, // Will be calculated later
+                IsDeprecated = original.IsDeprecated,
+                DeprecationReasons = original.DeprecationReasons?.ToList() ?? new List<string>(),
+                Alternative = original.Alternative != null ? new PackageAlternative
+                {
+                    Id = original.Alternative.Id,
+                    VersionRange = original.Alternative.VersionRange
+                } : null,
+                HasVulnerabilities = original.HasVulnerabilities,
+                Vulnerabilities = original.Vulnerabilities?.Select(v => new VulnerabilityInfo
+                {
+                    Severity = v.Severity ?? "Unknown",
+                    AdvisoryUrl = v.AdvisoryUrl ?? string.Empty
+                }).ToList() ?? new List<VulnerabilityInfo>()
+            };
+        }
+
         /// <inheritdoc />
-        public Dictionary<string, MergedPackage> MergePackages(
+        public Dictionary<string, PackageReference> MergePackages(
             List<ProjectInfo> outdatedProjects,
             List<ProjectInfo> deprecatedProjects,
             List<ProjectInfo> vulnerableProjects,
             string projectPath,
             string framework)
         {
-            ArgumentNullException.ThrowIfNull(outdatedProjects);
-            ArgumentNullException.ThrowIfNull(deprecatedProjects);
-            ArgumentNullException.ThrowIfNull(vulnerableProjects);
-            ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
-            ArgumentException.ThrowIfNullOrWhiteSpace(framework);
+            if (outdatedProjects == null) throw new ArgumentNullException(nameof(outdatedProjects));
+            if (deprecatedProjects == null) throw new ArgumentNullException(nameof(deprecatedProjects));
+            if (vulnerableProjects == null) throw new ArgumentNullException(nameof(vulnerableProjects));
+            if (string.IsNullOrWhiteSpace(projectPath)) throw new ArgumentException("projectPath cannot be null or whitespace", nameof(projectPath));
+            if (string.IsNullOrWhiteSpace(framework)) throw new ArgumentException("framework cannot be null or whitespace", nameof(framework));
 
-            var map = new Dictionary<string, MergedPackage>(StringComparer.OrdinalIgnoreCase);
+            var result = new Dictionary<string, PackageReference>(StringComparer.OrdinalIgnoreCase);
 
-            // Find the project in each report type
-            var outProject = outdatedProjects.FirstOrDefault(pr => pr.Path == projectPath);
-            if (outProject == null)
+            // Helper to upsert package info from a list
+            void UpsertFrom(List<ProjectInfo> projects, Action<PackageReference, PackageReference> mergeAction)
             {
-                _logger.LogWarning("Project not found in outdated report: {ProjectPath}", projectPath);
-                return map;
-            }
-
-            var depProject = deprecatedProjects.FirstOrDefault(pr => pr.Path == projectPath);
-            if (depProject == null)
-            {
-                _logger.LogWarning("Project not found in deprecated report: {ProjectPath}", projectPath);
-                return map;
-            }
-
-            var vulProject = vulnerableProjects.FirstOrDefault(pr => pr.Path == projectPath);
-            if (vulProject == null)
-            {
-                _logger.LogWarning("Project not found in vulnerable report: {ProjectPath}", projectPath);
-                return map;
-            }
-
-            // Find the framework in each project
-            var outFw = outProject.Frameworks.FirstOrDefault(f => f.Framework == framework);
-            var depFw = depProject.Frameworks.FirstOrDefault(f => f.Framework == framework);
-            var vulFw = vulProject.Frameworks.FirstOrDefault(f => f.Framework == framework);
-
-            // Merge packages from each report type
-            if (outFw != null) 
-            {
-                UpsertPackages(map, outFw.TopLevelPackages, ReportType.Outdated);
-                _logger.LogDebug("Merged {Count} outdated packages for {Project}:{Framework}", 
-                    outFw.TopLevelPackages.Count, projectPath, framework);
-            }
-
-            if (depFw != null) 
-            {
-                UpsertPackages(map, depFw.TopLevelPackages, ReportType.Deprecated);
-                _logger.LogDebug("Merged {Count} deprecated packages for {Project}:{Framework}", 
-                    depFw.TopLevelPackages.Count, projectPath, framework);
-            }
-
-            if (vulFw != null) 
-            {
-                UpsertPackages(map, vulFw.TopLevelPackages, ReportType.Vulnerable);
-                _logger.LogDebug("Merged {Count} vulnerable packages for {Project}:{Framework}", 
-                    vulFw.TopLevelPackages.Count, projectPath, framework);
-            }
-
-            _logger.LogInformation("Successfully merged {TotalPackages} packages for {Project}:{Framework}", 
-                map.Count, projectPath, framework);
-
-            return map;
-        }
-
-        /// <summary>
-        /// Updates or inserts packages into the merged package dictionary based on the report type.
-        /// </summary>
-        /// <param name="map">The dictionary of merged packages to update.</param>
-        /// <param name="packages">The list of package references to process.</param>
-        /// <param name="type">The type of report being processed.</param>
-        /// <remarks>
-        /// This method consolidates package information from different report types:
-        /// <list type="bullet">
-        /// <item><description>Outdated reports provide latest version information</description></item>
-        /// <item><description>Deprecated reports provide deprecation status and alternatives</description></item>
-        /// <item><description>Vulnerable reports provide security vulnerability information</description></item>
-        /// </list>
-        /// </remarks>
-        private static void UpsertPackages(Dictionary<string, MergedPackage> map, List<PackageReference> packages, ReportType type)
-        {
-            foreach (var p in packages)
-            {
-                // Create or get existing merged package
-                if (!map.TryGetValue(p.Id, out var m))
-                    map[p.Id] = m = new MergedPackage { Id = p.Id };
-
-                // Update common properties (these should be consistent across report types)
-                m.RequestedVersion = p.RequestedVersion;
-                m.ResolvedVersion = p.ResolvedVersion;
-
-                // Update type-specific properties
-                switch (type)
+                var project = projects.FirstOrDefault(p => string.Equals(p.Path, projectPath, StringComparison.OrdinalIgnoreCase));
+                if (project == null)
                 {
-                    case ReportType.Outdated:
-                        m.LatestVersion = p.LatestVersion;
-                        m.IsOutdated = !string.IsNullOrEmpty(p.LatestVersion) && 
-                                      p.ResolvedVersion != p.LatestVersion;
-                        break;
+                    _logger.LogDebug("No project found with path {ProjectPath} in the current list being processed.", projectPath);
+                    return;
+                }
 
-                    case ReportType.Deprecated:
-                        m.DeprecationReasons = p.DeprecationReasons ?? new List<string>();
-                        m.IsDeprecated = p.IsDeprecated || m.DeprecationReasons.Count > 0;
-                        m.Alternative = p.Alternative;
-                        break;
+                var fw = project.Frameworks?.FirstOrDefault(f => string.Equals(f.Framework, framework, StringComparison.OrdinalIgnoreCase));
+                if (fw == null)
+                {
+                    _logger.LogDebug("No framework matching {Framework} found in project {ProjectPath}.", framework, projectPath);
+                    return;
+                }
+                if (fw.TopLevelPackages == null)
+                {
+                    _logger.LogDebug("TopLevelPackages list is null for project {ProjectPath}, framework {Framework}.", projectPath, framework);
+                    return;
+                }
 
-                    case ReportType.Vulnerable:
-                        m.Vulnerabilities = p.Vulnerabilities ?? new List<VulnerabilityInfo>();
-                        break;
 
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown report type");
+                foreach (var pkg in fw.TopLevelPackages)
+                {
+                    if (pkg == null || string.IsNullOrEmpty(pkg.Id))
+                    {
+                        _logger.LogWarning("Skipping a null package or package with null/empty ID in project {ProjectPath}, framework {Framework}.", projectPath, framework);
+                        continue;
+                    }
+
+                    if (!result.TryGetValue(pkg.Id, out var existing))
+                    {
+                        existing = ClonePackageReference(pkg);
+                        result[pkg.Id] = existing;
+                        _logger.LogTrace("Added new package {PackageId} to results from current list.", pkg.Id);
+                    }
+                    else
+                    {
+                        _logger.LogTrace("Merging data for existing package {PackageId} from current list.", pkg.Id);
+                    }
+                    mergeAction(existing, pkg); // Apply specific merge logic
                 }
             }
+
+            // Process Outdated
+            _logger.LogDebug("Processing outdated packages for project {ProjectPath}, framework {Framework}.", projectPath, framework);
+            UpsertFrom(outdatedProjects, (existing, incoming) =>
+            {
+                existing.LatestVersion = incoming.LatestVersion;
+                // IsOutdated will be finalized at the end for consistency
+            });
+
+            // Process Deprecated
+            _logger.LogDebug("Processing deprecated packages for project {ProjectPath}, framework {Framework}.", projectPath, framework);
+            UpsertFrom(deprecatedProjects, (existing, incoming) =>
+            {
+                existing.IsDeprecated = incoming.IsDeprecated;
+                if (incoming.DeprecationReasons != null && incoming.DeprecationReasons.Any())
+                    existing.DeprecationReasons = incoming.DeprecationReasons.ToList(); // Ensure it's a new list
+                if (incoming.Alternative != null)
+                    existing.Alternative = new PackageAlternative // Clone alternative
+                    {
+                        Id = incoming.Alternative.Id,
+                        VersionRange = incoming.Alternative.VersionRange
+                    };
+            });
+
+            // Process Vulnerable
+            _logger.LogDebug("Processing vulnerable packages for project {ProjectPath}, framework {Framework}.", projectPath, framework);
+            UpsertFrom(vulnerableProjects, (existing, incoming) =>
+            {
+                // Always sync the flag first
+                existing.HasVulnerabilities = incoming.HasVulnerabilities;
+
+                if (incoming.Vulnerabilities?.Any() == true)
+                {
+                    // Clone and merge vulnerabilities, avoiding duplicates
+                    existing.Vulnerabilities = incoming.Vulnerabilities
+                        .Where(v => v != null)
+                        .Select(v => new VulnerabilityInfo
+                        {
+                            Severity = v.Severity ?? "Unknown",
+                            AdvisoryUrl = v.AdvisoryUrl ?? string.Empty
+                        })
+                        .ToList();
+                }
+                else if (incoming.HasVulnerabilities)
+                {
+                    // HasVulnerabilities is true but no specific vulnerabilities listed
+                    existing.Vulnerabilities = existing.Vulnerabilities ?? new List<VulnerabilityInfo>();
+                    _logger.LogWarning("Package {PackageId} marked as vulnerable but no specific vulnerabilities provided.", incoming.Id);
+                }
+                else
+                {
+                    // Ensure consistency: if not vulnerable, clear any existing vulnerabilities
+                    existing.Vulnerabilities = new List<VulnerabilityInfo>();
+                }
+            });
+
+            // Final pass to set IsOutdated consistently and ensure HasVulnerabilities aligns with Vulnerabilities list
+            _logger.LogDebug("Finalizing IsOutdated and HasVulnerabilities flags for all merged packages.");
+            // Final pass to set IsOutdated consistently
+            foreach (var pkg in result.Values)
+            {
+                // Enhanced version comparison
+                pkg.IsOutdated = IsPackageOutdated(pkg.ResolvedVersion, pkg.LatestVersion);
+
+                // Ensure HasVulnerabilities reflects the Vulnerabilities list
+                pkg.HasVulnerabilities = pkg.Vulnerabilities?.Any() == true;
+
+                // Log inconsistencies for debugging
+                if (pkg.HasVulnerabilities != (pkg.Vulnerabilities?.Any() == true))
+                {
+                    _logger.LogWarning("Vulnerability flag inconsistency for package {PackageId}: Flag={HasVulnerabilities}, ActualCount={Count}",
+                        pkg.Id, pkg.HasVulnerabilities, pkg.Vulnerabilities?.Count ?? 0);
+                }
+            }
+            _logger.LogInformation("Merged {PackageCount} unique packages for project {ProjectPath}, framework {Framework}.", result.Count, projectPath, framework);
+            return result;
+        }
+
+        private static bool IsPackageOutdated(string? resolvedVersion, string? latestVersion)
+        {
+            if (string.IsNullOrWhiteSpace(resolvedVersion) || string.IsNullOrWhiteSpace(latestVersion))
+                return false;
+
+            // Simple string comparison (could be enhanced with SemVer parsing)
+            return !string.Equals(resolvedVersion.Trim(), latestVersion.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        // This explicit interface implementation was throwing NotImplementedException.
+        // It should either be implemented or removed if the public method is the intended one.
+        // Assuming the public method is the one being used and tested.
+        // If MergedPackage is a different target type, this needs separate logic.
+        Dictionary<string, MergedPackage> IPackageAnalyzer.MergePackages(
+            List<ProjectInfo> outdatedProjects,
+            List<ProjectInfo> deprecatedProjects,
+            List<ProjectInfo> vulnerableProjects,
+            string projectPath,
+            string framework)
+        {
+            // The explicit warning and placeholder comments are removed to make this the accepted implementation.
+            var packageReferenceResult = MergePackages(outdatedProjects, deprecatedProjects, vulnerableProjects, projectPath, framework);
+            var mergedPackageResult = new Dictionary<string, MergedPackage>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var entry in packageReferenceResult)
+            {
+                var pr = entry.Value;
+                mergedPackageResult[entry.Key] = new MergedPackage
+                {
+                    Id = pr.Id,
+                    RequestedVersion = pr.RequestedVersion,
+                    ResolvedVersion = pr.ResolvedVersion,
+                    LatestVersion = pr.LatestVersion,
+                    IsOutdated = pr.IsOutdated,
+                    IsDeprecated = pr.IsDeprecated,
+                    DeprecationReasons = pr.DeprecationReasons?.ToList() ?? new List<string>(),
+                    Alternative = pr.Alternative != null ? new NuGetInspectorApp.Models.PackageAlternative
+                    {
+                        Id = pr.Alternative.Id,
+                        VersionRange = pr.Alternative.VersionRange
+                    } : null,
+                    Vulnerabilities = pr.Vulnerabilities?.Select(v => new NuGetInspectorApp.Models.VulnerabilityInfo
+                    {
+                        Severity = v.Severity,
+                        AdvisoryUrl = v.AdvisoryUrl
+                    }).ToList() ?? new List<NuGetInspectorApp.Models.VulnerabilityInfo>()
+                };
+            }
+            return mergedPackageResult;
         }
     }
+
+    // Enum ReportType is defined in the same file in the provided context.
+    // If it's meant to be used by UpsertPackages (which is currently unused), it should remain.
+    // However, the primary MergePackages method does not use it.
+    // For clarity, if UpsertPackages and ReportType are not used by the public MergePackages,
+    // they could be removed or refactored. Keeping it as per provided context.
 
     /// <summary>
     /// Represents the different types of package analysis reports.

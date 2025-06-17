@@ -53,97 +53,243 @@ namespace NuGetInspectorApp.Services
         }
 
         /// <inheritdoc />
+        /// <inheritdoc />
         public async Task<PackageMetadata> FetchPackageMetadataAsync(string id, string version, CancellationToken cancellationToken = default)
         {
-            // Enhanced input validation
-            ValidatePackageInput(id, version);
+            // Enhanced input validation with detailed logging
+            try
+            {
+                ValidatePackageInput(id, version);
+                _logger.LogTrace("Validated input for package {PackageId} version {Version}", id, version);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError("Invalid input for package fetch: {Error}", ex.Message);
+                throw;
+            }
 
             var meta = new PackageMetadata
             {
                 PackageUrl = $"{_configuration.NuGetGalleryBaseUrl}/{id}/{version}"
             };
 
+            var operationId = Guid.NewGuid().ToString("N")[..8];
+            _logger.LogDebug("Starting metadata fetch operation {OperationId} for {PackageId} {Version}", operationId, id, version);
+
             await _semaphore.WaitAsync(cancellationToken);
             try
             {
                 string regUrl = $"{_configuration.NuGetApiBaseUrl}/{id.ToLowerInvariant()}/{version}.json";
-                _logger.LogDebug("Fetching registration from {Url}", regUrl);
+                _logger.LogDebug("[{OperationId}] Fetching registration from {Url}", operationId, regUrl);
 
                 using var regRes = await ExecuteWithRetryAsync(
                     () => _httpClient.GetAsync(regUrl, cancellationToken),
                     $"fetch registration for {id} {version}",
-                    cancellationToken);
+                    cancellationToken,
+                    operationId);
 
                 if (!regRes.IsSuccessStatusCode)
                 {
-                    _logger.LogWarning("Failed to fetch metadata for {PackageId} {Version}. Status: {StatusCode}",
-                        id, version, regRes.StatusCode);
+                    _logger.LogWarning("[{OperationId}] Failed to fetch metadata for {PackageId} {Version}. Status: {StatusCode}. Returning minimal metadata.",
+                        operationId, id, version, regRes.StatusCode);
                     return meta;
                 }
 
-                using var regStream = await regRes.Content.ReadAsStreamAsync(cancellationToken);
-                using var regDoc = await JsonDocument.ParseAsync(regStream, cancellationToken: cancellationToken);
+                // Read as string for better lifecycle management
+                var regContent = await regRes.Content.ReadAsStringAsync(cancellationToken);
+                using var regDoc = JsonDocument.Parse(regContent);
                 var root = regDoc.RootElement;
 
-                JsonElement details = root;
-                if (root.TryGetProperty("catalogEntry", out var ce))
+                _logger.LogTrace("[{OperationId}] Successfully parsed registration JSON for {PackageId} {Version}", operationId, id, version);
+
+                // Diagnostic logging for structure analysis
+                _logger.LogTrace("[{OperationId}] Registration structure: HasItems={HasItems}, HasDirectCatalogEntry={HasDirectCatalogEntry}",
+                    operationId, root.TryGetProperty("items", out _), root.TryGetProperty("catalogEntry", out _));
+
+                // Enhanced catalog entry detection and processing
+                JsonElement details = root; // Default to registration data
+
+                // First, try to find catalogEntry at root level
+                if (root.TryGetProperty("catalogEntry", out var catalogEntry))
                 {
-                    if (ce.ValueKind == JsonValueKind.String)
+                    _logger.LogTrace("[{OperationId}] Found catalogEntry at root level for {PackageId} {Version}", operationId, id, version);
+                    details = await ProcessCatalogEntry(catalogEntry, operationId, id, version, cancellationToken) ?? root;
+                }
+                // If not found at root, search in items array
+                else if (root.TryGetProperty("items", out var itemsArray) && itemsArray.ValueKind == JsonValueKind.Array)
+                {
+                    _logger.LogTrace("[{OperationId}] Searching for catalogEntry in items array for {PackageId} {Version}", operationId, id, version);
+
+                    foreach (var item in itemsArray.EnumerateArray())
                     {
-                        var detailsUrl = ce.GetString()!;
-
-                        // Validate the catalog URL for security
-                        if (!IsValidCatalogUrl(detailsUrl))
+                        if (item.TryGetProperty("catalogEntry", out catalogEntry))
                         {
-                            _logger.LogWarning("Invalid catalog URL for {PackageId} {Version}: {Url}", id, version, detailsUrl);
-                            return meta;
+                            _logger.LogTrace("[{OperationId}] Found catalogEntry in items array for {PackageId} {Version}", operationId, id, version);
+                            var processedEntry = await ProcessCatalogEntry(catalogEntry, operationId, id, version, cancellationToken);
+                            if (processedEntry.HasValue)
+                            {
+                                details = processedEntry.Value;
+                                break;
+                            }
                         }
-
-                        _logger.LogDebug("Fetching catalogEntry from {Url}", detailsUrl);
-                        using var detRes = await ExecuteWithRetryAsync(
-                            () => _httpClient.GetAsync(detailsUrl, cancellationToken),
-                            $"fetch catalog entry for {id} {version}",
-                            cancellationToken);
-
-                        if (detRes.IsSuccessStatusCode)
-                        {
-                            using var detStream = await detRes.Content.ReadAsStreamAsync(cancellationToken);
-                            using var detDoc = await JsonDocument.ParseAsync(detStream, cancellationToken: cancellationToken);
-                            details = detDoc.RootElement.Clone();
-                        }
-                    }
-                    else if (ce.ValueKind == JsonValueKind.Object)
-                    {
-                        details = ce.Clone();
                     }
                 }
+                else
+                {
+                    _logger.LogTrace("[{OperationId}] No catalogEntry found, using registration data for {PackageId} {Version}", operationId, id, version);
+                }
 
-                ExtractProjectUrl(meta, details, root);
-                ExtractDependencyGroups(meta, details);
+                // Extract metadata with enhanced error handling
+                ExtractMetadataWithErrorHandling(meta, details, root, operationId, id, version);
+
+                _logger.LogDebug("[{OperationId}] Successfully completed metadata fetch for {PackageId} {Version}", operationId, id, version);
             }
             catch (TaskCanceledException ex) when (ex.CancellationToken == cancellationToken)
             {
-                _logger.LogWarning("Request cancelled for {PackageId} {Version}", id, version);
+                _logger.LogWarning("[{OperationId}] Request cancelled for {PackageId} {Version}", operationId, id, version);
                 throw;
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogWarning("Network error fetching metadata for {PackageId} {Version}: {Error}", id, version, ex.Message);
+                _logger.LogWarning("[{OperationId}] Network error fetching metadata for {PackageId} {Version}: {Error}. Returning minimal metadata.",
+                    operationId, id, version, ex.Message);
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning("JSON parsing error for {PackageId} {Version}: {Error}", id, version, ex.Message);
+                _logger.LogWarning("[{OperationId}] JSON parsing error for {PackageId} {Version}: {Error}. Returning minimal metadata.",
+                    operationId, id, version, ex.Message);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unexpected error fetching metadata for {PackageId} {Version}", id, version);
+                _logger.LogError(ex, "[{OperationId}] Unexpected error fetching metadata for {PackageId} {Version}. Returning minimal metadata.",
+                    operationId, id, version);
             }
             finally
             {
                 _semaphore.Release();
             }
 
+            // Ensure DependencyGroups is never null
+            meta.DependencyGroups ??= new List<DependencyGroup>();
             return meta;
+        }
+
+        /// <summary>
+        /// Processes a catalog entry, handling both URL strings and embedded objects.
+        /// </summary>
+        /// <param name="catalogEntry">The catalog entry JSON element.</param>
+        /// <param name="operationId">Operation ID for logging correlation.</param>
+        /// <param name="id">Package ID.</param>
+        /// <param name="version">Package version.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The processed catalog entry as JsonElement, or null if processing failed.</returns>
+        private async Task<JsonElement?> ProcessCatalogEntry(
+            JsonElement catalogEntry,
+            string operationId,
+            string id,
+            string version,
+            CancellationToken cancellationToken)
+        {
+            if (catalogEntry.ValueKind == JsonValueKind.String)
+            {
+                var catalogUrl = catalogEntry.GetString();
+                if (!string.IsNullOrWhiteSpace(catalogUrl))
+                {
+                    _logger.LogDebug("[{OperationId}] Fetching catalog entry from URL: {CatalogUrl}", operationId, catalogUrl);
+
+                    // Validate the catalog URL for security
+                    if (!IsValidCatalogUrl(catalogUrl))
+                    {
+                        _logger.LogWarning("[{OperationId}] Invalid catalog URL for {PackageId} {Version}: {Url}. Skipping catalog fetch.",
+                            operationId, id, version, catalogUrl);
+                        return null;
+                    }
+
+                    try
+                    {
+                        using var catalogRes = await ExecuteWithRetryAsync(
+                            () => _httpClient.GetAsync(catalogUrl, cancellationToken),
+                            $"fetch catalog entry for {id} {version}",
+                            cancellationToken,
+                            operationId);
+
+                        if (catalogRes.IsSuccessStatusCode)
+                        {
+                            var catalogContent = await catalogRes.Content.ReadAsStringAsync(cancellationToken);
+                            using var catalogDoc = JsonDocument.Parse(catalogContent);
+                            var catalogRoot = catalogDoc.RootElement.Clone();
+
+                            _logger.LogTrace("[{OperationId}] Successfully fetched and parsed catalog entry from URL for {PackageId} {Version}",
+                                operationId, id, version);
+
+                            return catalogRoot;
+                        }
+                        else
+                        {
+                            _logger.LogWarning("[{OperationId}] Failed to fetch catalog entry from URL for {PackageId} {Version}. Status: {StatusCode}",
+                                operationId, id, version, catalogRes.StatusCode);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "[{OperationId}] Error fetching catalog entry from URL for {PackageId} {Version}: {Error}",
+                            operationId, id, version, ex.Message);
+                    }
+                }
+            }
+            else if (catalogEntry.ValueKind == JsonValueKind.Object)
+            {
+                _logger.LogTrace("[{OperationId}] Using embedded catalog entry object for {PackageId} {Version}", operationId, id, version);
+                return catalogEntry.Clone();
+            }
+            else
+            {
+                _logger.LogWarning("[{OperationId}] Unexpected catalog entry type {ValueKind} for {PackageId} {Version}",
+                    operationId, catalogEntry.ValueKind, id, version);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Extracts metadata from JSON elements with comprehensive error handling.
+        /// </summary>
+        private void ExtractMetadataWithErrorHandling(
+            PackageMetadata meta,
+            JsonElement details,
+            JsonElement root,
+            string operationId,
+            string id,
+            string version)
+        {
+            // Extract project URL
+            try
+            {
+                ExtractProjectUrl(meta, details, root);
+                _logger.LogTrace("[{OperationId}] Extracted project URL for {PackageId} {Version}: {ProjectUrl}",
+                    operationId, id, version, meta.ProjectUrl ?? "none");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("[{OperationId}] Error extracting project URL for {PackageId} {Version}: {Error}",
+                    operationId, id, version, ex.Message);
+            }
+
+            // Extract dependency groups
+            try
+            {
+                ExtractDependencyGroups(meta, details);
+                var depCount = meta.DependencyGroups?.Sum(g => g.Dependencies?.Count ?? 0) ?? 0;
+                _logger.LogTrace("[{OperationId}] Extracted {DependencyCount} dependencies across {GroupCount} groups for {PackageId} {Version}",
+                    operationId, depCount, meta.DependencyGroups?.Count ?? 0, id, version);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("[{OperationId}] Error extracting dependency groups for {PackageId} {Version}: {Error}",
+                    operationId, id, version, ex.Message);
+                // Ensure DependencyGroups is not null even if extraction fails
+                meta.DependencyGroups ??= new List<DependencyGroup>();
+            }
         }
 
         /// <summary>
@@ -152,11 +298,13 @@ namespace NuGetInspectorApp.Services
         /// <param name="operation">The HTTP operation to execute.</param>
         /// <param name="operationName">A descriptive name for logging.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
+        /// <param name="operationId">Unique operation identifier for logging correlation.</param>
         /// <returns>The HTTP response message.</returns>
         private async Task<HttpResponseMessage> ExecuteWithRetryAsync(
             Func<Task<HttpResponseMessage>> operation,
             string operationName,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            string? operationId = null)
         {
             var attempt = 0;
             var delay = TimeSpan.FromSeconds(_configuration.RetryDelaySeconds);
@@ -174,19 +322,24 @@ namespace NuGetInspectorApp.Services
                     // Success or non-retryable error
                     if (response.IsSuccessStatusCode || !IsRetryableStatusCode(response.StatusCode))
                     {
+                        if (response.IsSuccessStatusCode)
+                        {
+                            _logger.LogTrace("[{OperationId}] {Operation} succeeded on attempt {Attempt}",
+                                operationId, operationName, attempt);
+                        }
                         return response;
                     }
 
                     // Retryable HTTP error
                     if (attempt > _configuration.MaxRetryAttempts)
                     {
-                        _logger.LogWarning("Failed to {Operation} after {Attempts} attempts. Status: {StatusCode}",
-                            operationName, attempt, response.StatusCode);
+                        _logger.LogWarning("[{OperationId}] Failed to {Operation} after {Attempts} attempts. Final status: {StatusCode}",
+                            operationId, operationName, attempt, response.StatusCode);
                         return response;
                     }
 
-                    _logger.LogDebug("Attempt {Attempt} to {Operation} failed with {StatusCode}, retrying in {Delay}ms",
-                        attempt, operationName, response.StatusCode, delay.TotalMilliseconds);
+                    _logger.LogDebug("[{OperationId}] Attempt {Attempt} to {Operation} failed with {StatusCode}, retrying in {Delay}ms",
+                        operationId, attempt, operationName, response.StatusCode, delay.TotalMilliseconds);
 
                     response.Dispose();
                     lastException = new HttpRequestException($"HTTP {response.StatusCode}");
@@ -196,35 +349,38 @@ namespace NuGetInspectorApp.Services
                     lastException = ex;
                     if (attempt > _configuration.MaxRetryAttempts)
                     {
-                        _logger.LogWarning("Failed to {Operation} after {Attempts} attempts due to network error: {Error}",
-                            operationName, attempt, ex.Message);
+                        _logger.LogWarning("[{OperationId}] Failed to {Operation} after {Attempts} attempts due to network error: {Error}",
+                            operationId, operationName, attempt, ex.Message);
                         throw;
                     }
 
-                    _logger.LogDebug("Attempt {Attempt} to {Operation} failed with network error: {Error}, retrying in {Delay}ms",
-                        attempt, operationName, ex.Message, delay.TotalMilliseconds);
+                    _logger.LogDebug("[{OperationId}] Attempt {Attempt} to {Operation} failed with network error: {Error}, retrying in {Delay}ms",
+                        operationId, attempt, operationName, ex.Message, delay.TotalMilliseconds);
                 }
                 catch (TaskCanceledException ex) when (!ex.CancellationToken.IsCancellationRequested)
                 {
                     lastException = ex;
                     if (attempt > _configuration.MaxRetryAttempts)
                     {
-                        _logger.LogWarning("Failed to {Operation} after {Attempts} attempts due to timeout",
-                            operationName, attempt);
+                        _logger.LogWarning("[{OperationId}] Failed to {Operation} after {Attempts} attempts due to timeout",
+                            operationId, operationName, attempt);
                         throw new TimeoutException($"Operation '{operationName}' timed out after {attempt} attempts", ex);
                     }
 
-                    _logger.LogDebug("Attempt {Attempt} to {Operation} timed out, retrying in {Delay}ms",
-                        attempt, operationName, delay.TotalMilliseconds);
+                    _logger.LogDebug("[{OperationId}] Attempt {Attempt} to {Operation} timed out, retrying in {Delay}ms",
+                        operationId, attempt, operationName, delay.TotalMilliseconds);
                 }
                 catch (TaskCanceledException ex) when (ex.CancellationToken.IsCancellationRequested)
                 {
                     // User-requested cancellation, don't retry
+                    _logger.LogDebug("[{OperationId}] {Operation} cancelled by user on attempt {Attempt}",
+                        operationId, operationName, attempt);
                     throw;
                 }
 
                 // Wait before retry with jitter
-                await Task.Delay(CalculateDelayWithJitter(delay), cancellationToken);
+                var actualDelay = CalculateDelayWithJitter(delay);
+                await Task.Delay(actualDelay, cancellationToken);
 
                 // Exponential backoff
                 delay = TimeSpan.FromSeconds(Math.Min(
@@ -342,6 +498,7 @@ namespace NuGetInspectorApp.Services
         /// <param name="root">The root JSON element.</param>
         private static void ExtractProjectUrl(PackageMetadata meta, JsonElement details, JsonElement root)
         {
+            // Try details first (catalog entry)
             if (details.TryGetProperty("projectUrl", out var pu) && pu.ValueKind == JsonValueKind.String)
             {
                 var projectUrl = pu.GetString();
@@ -349,9 +506,12 @@ namespace NuGetInspectorApp.Services
                     (uri.Scheme == "https" || uri.Scheme == "http"))
                 {
                     meta.ProjectUrl = projectUrl;
+                    return;
                 }
             }
-            else if (root.TryGetProperty("projectUrl", out pu) && pu.ValueKind == JsonValueKind.String)
+
+            // Fallback to root element (registration)
+            if (root.TryGetProperty("projectUrl", out pu) && pu.ValueKind == JsonValueKind.String)
             {
                 var projectUrl = pu.GetString();
                 if (!string.IsNullOrEmpty(projectUrl) && Uri.TryCreate(projectUrl, UriKind.Absolute, out var uri) &&

@@ -9,7 +9,7 @@ namespace NuGetInspectorApp.Configuration
         /// Gets or sets the base URL for the NuGet API registration endpoint.
         /// </summary>
         /// <value>The NuGet API base URL. Default is "https://api.nuget.org/v3/registration5-gz-semver2".</value>
-        public string NuGetApiBaseUrl { get; set; } = "https://api.nuget.org/v3/registration5-gz-semver2";
+        public string NuGetApiBaseUrl { get; set; } = "https://api.nuget.org/v3/registration5-semver1";
 
         /// <summary>
         /// Gets or sets the base URL for the NuGet Gallery.

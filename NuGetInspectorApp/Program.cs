@@ -8,6 +8,7 @@ using NuGetInspectorApp.Configuration;
 using NuGetInspectorApp.Formatters;
 using NuGetInspectorApp.Services;
 using NuGetInspectorApp.Application;
+using System.Net;
 
 namespace NuGetInspectorApp;
 
@@ -307,11 +308,11 @@ static IHostBuilder CreateHostBuilder(CommandLineOptions options, AppConfigurati
         })
         .ConfigureServices((context, services) =>
         {
-            services.AddSingleton(config);
-            services.AddSingleton<INuGetApiService, NuGetApiService>();
+            services.AddSingleton(config); // config is the AppConfiguration instance from CreateHostBuilder parameters
+            // services.AddSingleton<INuGetApiService, NuGetApiService>(); // Removed: Will be handled by AddHttpClient
             services.AddSingleton<IPackageAnalyzer, PackageAnalyzer>();
             services.AddSingleton<IDotNetService, DotNetService>();
-            services.AddSingleton<IReportFormatter, ConsoleReportFormatter>();
+            services.AddSingleton<IReportFormatter, ConsoleReportFormatter>(); // Consider making this dynamic based on options.OutputFormat
             services.AddTransient<NuGetAuditApplication>();
 
             // Configure console formatter options through the service collection
@@ -321,17 +322,22 @@ static IHostBuilder CreateHostBuilder(CommandLineOptions options, AppConfigurati
                 options.UseUtcTimestamp = false;
             });
 
-            // Add HttpClient with proper configuration
-            services.AddHttpClient<NuGetApiService>(client =>
+            // Add HttpClient with proper configuration for INuGetApiService
+            services.AddHttpClient<INuGetApiService, NuGetApiService>((serviceProvider, client) =>
             {
-                client.Timeout = TimeSpan.FromSeconds(config.HttpTimeoutSeconds);
+                var appConfig = serviceProvider.GetRequiredService<AppConfiguration>();
+                if (!string.IsNullOrWhiteSpace(appConfig.NuGetApiBaseUrl))
+                {
+                    client.BaseAddress = new Uri(appConfig.NuGetApiBaseUrl);
+                }
+                client.Timeout = TimeSpan.FromSeconds(appConfig.HttpTimeoutSeconds);
                 client.DefaultRequestHeaders.Add("User-Agent", "NuGetInspector/1.0");
                 client.DefaultRequestHeaders.Add("Accept", "application/json");
             })
             .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
             {
-                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
-                MaxConnectionsPerServer = config.MaxConcurrentRequests
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
+                MaxConnectionsPerServer = config.MaxConcurrentRequests // 'config' is captured from CreateHostBuilder
             });
         });
 }

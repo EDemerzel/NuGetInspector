@@ -30,7 +30,7 @@ namespace NuGetInspectorApp.Tests.Services
             _httpClient = new HttpClient(_mockHttpMessageHandler.Object);
             _configuration = new AppConfiguration
             {
-                NuGetApiBaseUrl = "https://api.nuget.org/v3/registration5-gz-semver2", // Example base URL
+                NuGetApiBaseUrl = "https://api.nuget.org/v3/registration5-semver1", // Example base URL
                 NuGetGalleryBaseUrl = "https://www.nuget.org/packages",
                 MaxConcurrentRequests = 5,
                 HttpTimeoutSeconds = 30,
@@ -52,20 +52,24 @@ namespace NuGetInspectorApp.Tests.Services
         public async Task FetchPackageMetadataAsync_WithValidPackage_ReturnsMetadata()
         {
             // Arrange
-            var packageId = "Newtonsoft.Json";
-            var version = "13.0.3";
+            var packageId = "Microsoft.Data.SqlClient";
+            var version = "5.0.0";
 
             SetupHttpResponse(HttpStatusCode.OK, CreateValidRegistrationResponse());
 
             // Act
             var result = await _service.FetchPackageMetadataAsync(packageId, version);
 
+            Console.WriteLine($"Package ID: {packageId}, Version: {version}");
+            Console.WriteLine("Result:");
+            Console.WriteLine(JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true }));
+
             // Assert
             result.Should().NotBeNull();
             result.PackageUrl.Should().Be($"{_configuration.NuGetGalleryBaseUrl}/{packageId}/{version}");
-            result.ProjectUrl.Should().Be("https://www.newtonsoft.com/json");
+            result.ProjectUrl.Should().Be("https://aka.ms/sqlclientproject");
             result.DependencyGroups.Should().NotBeEmpty();
-            result.DependencyGroups![0].TargetFramework.Should().Be("net6.0");
+            result.DependencyGroups![0].TargetFramework.Should().Be("netcoreapp3.1");
         }
 
         [Test]

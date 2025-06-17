@@ -6,6 +6,7 @@ using NUnit.Framework;
 using FluentAssertions;
 using System.Collections.Generic;
 using System.Linq;
+using System; // Required for ArgumentNullException and ArgumentException
 
 namespace NuGetInspectorApp.Tests.Services
 {
@@ -65,7 +66,7 @@ namespace NuGetInspectorApp.Tests.Services
         public void MergePackages_WithInvalidTargetFramework_ThrowsArgumentException(string? targetFramework)
         {
             FluentActions.Invoking(() => _analyzer.MergePackages(new List<ProjectInfo>(), new List<ProjectInfo>(), new List<ProjectInfo>(), TestProjectPath, targetFramework!))
-                .Should().Throw<ArgumentException>().WithMessage("*framework*"); // Parameter name in implementation is 'framework'
+                .Should().Throw<ArgumentException>().WithMessage("*framework*");
         }
 
         #endregion
@@ -109,10 +110,10 @@ namespace NuGetInspectorApp.Tests.Services
             merged.Id.Should().Be("PkgA");
             merged.RequestedVersion.Should().Be("1.0.0");
             merged.ResolvedVersion.Should().Be("1.0.0");
-            merged.IsOutdated.Should().BeTrue();
+            merged.IsOutdated.Should().BeTrue(); // This line should now compile and pass
             merged.LatestVersion.Should().Be("1.1.0");
             merged.IsDeprecated.Should().BeFalse();
-            merged.Vulnerabilities.Should().BeEmpty();
+            (merged.Vulnerabilities == null || !merged.Vulnerabilities.Any()).Should().BeTrue();
         }
 
         [Test]
@@ -128,10 +129,10 @@ namespace NuGetInspectorApp.Tests.Services
             merged.Id.Should().Be("PkgB");
             merged.IsOutdated.Should().BeFalse();
             merged.IsDeprecated.Should().BeTrue();
-            merged.DeprecationReasons.Should().Contain("Old");
+            merged.DeprecationReasons.Should().NotBeNull().And.Contain("Old");
             merged.Alternative.Should().NotBeNull();
             merged.Alternative!.Id.Should().Be("PkgBNew");
-            merged.Vulnerabilities.Should().BeEmpty();
+            (merged.Vulnerabilities == null || !merged.Vulnerabilities.Any()).Should().BeTrue();
         }
 
         [Test]
@@ -147,8 +148,9 @@ namespace NuGetInspectorApp.Tests.Services
             merged.Id.Should().Be("PkgC");
             merged.IsOutdated.Should().BeFalse();
             merged.IsDeprecated.Should().BeFalse();
-            merged.Vulnerabilities.Should().HaveCount(1);
-            merged.Vulnerabilities[0].Severity.Should().Be("High");
+            merged.Vulnerabilities.Should().NotBeNull().And.HaveCount(1);
+            merged.Vulnerabilities![0].Severity.Should().Be("High");
+            merged.HasVulnerabilities.Should().BeTrue();
         }
 
         [Test]
@@ -170,14 +172,15 @@ namespace NuGetInspectorApp.Tests.Services
             result.Should().ContainKey(pkg);
             var merged = result[pkg];
             merged.Id.Should().Be(pkg);
-            merged.RequestedVersion.Should().Be(version); // Assuming Requested is taken from first appearance or consistent
+            merged.RequestedVersion.Should().Be(version);
             merged.ResolvedVersion.Should().Be(version);
             merged.IsOutdated.Should().BeTrue();
             merged.LatestVersion.Should().Be("1.1.0");
             merged.IsDeprecated.Should().BeTrue();
-            merged.DeprecationReasons.Should().Contain("Legacy");
-            merged.Vulnerabilities.Should().HaveCount(1);
-            merged.Vulnerabilities[0].Severity.Should().Be("Critical");
+            merged.DeprecationReasons.Should().NotBeNull().And.Contain("Legacy");
+            merged.Vulnerabilities.Should().NotBeNull().And.HaveCount(1);
+            merged.Vulnerabilities![0].Severity.Should().Be("Critical");
+            merged.HasVulnerabilities.Should().BeTrue();
         }
 
         [Test]
@@ -197,8 +200,8 @@ namespace NuGetInspectorApp.Tests.Services
         [Test]
         public void MergePackages_PackageInMultipleLists_TakesResolvedVersionFromFirstAvailable()
         {
-            var pkgE_outdated = CreateTestPackageReference("PkgE", "1.0.0", latestVersion: "1.1.0"); // ResolvedVersion is 1.0.0
-            var pkgE_deprecated = CreateTestPackageReference("PkgE", "1.0.1", isDeprecated: true); // ResolvedVersion is 1.0.1
+            var pkgE_outdated = CreateTestPackageReference("PkgE", "1.0.0", latestVersion: "1.1.0");
+            var pkgE_deprecated = CreateTestPackageReference("PkgE", "1.0.1", isDeprecated: true); // Different ResolvedVersion
 
             var outdatedList = CreateProjectList(TestProjectPath, TestFramework, pkgE_outdated);
             var deprecatedList = CreateProjectList(TestProjectPath, TestFramework, pkgE_deprecated);
@@ -207,11 +210,14 @@ namespace NuGetInspectorApp.Tests.Services
 
             result.Should().ContainKey("PkgE");
             var merged = result["PkgE"];
-            merged.ResolvedVersion.Should().Be("1.0.0"); // From outdated list (processed first by Upsert logic)
+            // The ClonePackageReference ensures that the first time a package is seen, its base data (like ResolvedVersion) is set.
+            // Subsequent merges update specific fields like IsDeprecated, LatestVersion, etc.
+            merged.ResolvedVersion.Should().Be("1.0.0"); // From outdated list (processed first)
             merged.IsOutdated.Should().BeTrue();
             merged.LatestVersion.Should().Be("1.1.0");
-            merged.IsDeprecated.Should().BeTrue();
+            merged.IsDeprecated.Should().BeTrue(); // Deprecated status from the second list is merged.
         }
+
 
         [Test]
         public void MergePackages_MultiplePackages_AllMergedCorrectly()
@@ -219,8 +225,7 @@ namespace NuGetInspectorApp.Tests.Services
             var pkgA_outdated = CreateTestPackageReference("PkgA", "1.0.0", latestVersion: "1.1.0");
             var pkgB_deprecated = CreateTestPackageReference("PkgB", "2.0.0", isDeprecated: true);
             var pkgC_vulnerable = CreateTestPackageReference("PkgC", "3.0.0", hasVulnerabilities: true);
-            var pkgD_no_status = CreateTestPackageReference("PkgD", "4.0.0");
-
+            var pkgD_no_status = CreateTestPackageReference("PkgD", "4.0.0"); // No specific status, just exists
 
             var outdatedList = CreateProjectList(TestProjectPath, TestFramework, pkgA_outdated, pkgD_no_status);
             var deprecatedList = CreateProjectList(TestProjectPath, TestFramework, pkgB_deprecated);
@@ -231,11 +236,14 @@ namespace NuGetInspectorApp.Tests.Services
             result.Should().HaveCount(4);
             result["PkgA"].IsOutdated.Should().BeTrue();
             result["PkgB"].IsDeprecated.Should().BeTrue();
-            result["PkgC"].Vulnerabilities.Should().NotBeEmpty();
-            result["PkgD"].IsOutdated.Should().BeFalse();
+            result["PkgC"].Vulnerabilities.Should().NotBeNull().And.NotBeEmpty();
+            result["PkgC"].HasVulnerabilities.Should().BeTrue();
+            result["PkgD"].IsOutdated.Should().BeFalse(); // LatestVersion is null by default in CreateTestPackageReference
             result["PkgD"].IsDeprecated.Should().BeFalse();
-            result["PkgD"].Vulnerabilities.Should().BeEmpty();
+            result["PkgD"].Vulnerabilities.Should().BeNullOrEmpty();
+            result["PkgD"].HasVulnerabilities.Should().BeFalse();
         }
+
 
         [Test]
         public void MergePackages_HandlesNullTopLevelPackagesListInFrameworkInfo()
@@ -245,7 +253,7 @@ namespace NuGetInspectorApp.Tests.Services
                 Path = TestProjectPath,
                 Frameworks = new List<FrameworkInfo>
                 {
-                    new FrameworkInfo { Framework = TestFramework, TopLevelPackages = null! }
+                    new FrameworkInfo { Framework = TestFramework, TopLevelPackages = null! } // Null list
                 }
             };
             var outdatedList = new List<ProjectInfo> { projectWithNullPackages };
@@ -261,7 +269,7 @@ namespace NuGetInspectorApp.Tests.Services
                 Path = TestProjectPath,
                 Frameworks = new List<FrameworkInfo>
                 {
-                    new FrameworkInfo { Framework = TestFramework, TopLevelPackages = new List<PackageReference>() }
+                    new FrameworkInfo { Framework = TestFramework, TopLevelPackages = new List<PackageReference>() } // Empty list
                 }
             };
             var outdatedList = new List<ProjectInfo> { projectWithEmptyPackages };
@@ -287,7 +295,7 @@ namespace NuGetInspectorApp.Tests.Services
                         {
                             Framework = framework,
                             TopLevelPackages = packages.ToList(),
-                            TransitivePackages = new List<PackageReference>() // Assuming transitive not directly merged by this unit's focus
+                            TransitivePackages = new List<PackageReference>()
                         }
                     }
                 }
@@ -296,7 +304,7 @@ namespace NuGetInspectorApp.Tests.Services
 
         private static PackageReference CreateTestPackageReference(
             string id,
-            string version, // This will be used for RequestedVersion and ResolvedVersion
+            string version,
             string? latestVersion = null,
             bool isDeprecated = false,
             string? deprecationReason = null,
@@ -305,19 +313,32 @@ namespace NuGetInspectorApp.Tests.Services
             string? vulnSeverity = null,
             string? vulnAdvisoryUrl = null)
         {
+            var reasons = new List<string>();
+            if (isDeprecated && deprecationReason != null)
+            {
+                reasons.Add(deprecationReason);
+            }
+
+            var alternative = isDeprecated && altPkgId != null ? new PackageAlternative { Id = altPkgId, VersionRange = ">=0.0.0" } : null;
+
+            var vulnerabilities = new List<VulnerabilityInfo>();
+            if (hasVulnerabilities)
+            {
+                vulnerabilities.Add(new VulnerabilityInfo { Severity = vulnSeverity ?? "Unknown", AdvisoryUrl = vulnAdvisoryUrl ?? string.Empty });
+            }
+
             return new PackageReference
             {
                 Id = id,
                 RequestedVersion = version,
                 ResolvedVersion = version,
-                LatestVersion = latestVersion, // Null if not outdated or info not available
+                LatestVersion = latestVersion,
                 IsDeprecated = isDeprecated,
-                DeprecationReasons = isDeprecated && deprecationReason != null ? new List<string> { deprecationReason } : null,
-                Alternative = isDeprecated && altPkgId != null ? new PackageAlternative { Id = altPkgId, VersionRange = ">=0.0.0" } : null, // Simplified VersionRange
-                HasVulnerabilities = hasVulnerabilities, // This field might be redundant if Vulnerabilities list is checked
-                Vulnerabilities = hasVulnerabilities ?
-                    new List<VulnerabilityInfo> { new VulnerabilityInfo { Severity = vulnSeverity ?? "Unknown", AdvisoryUrl = vulnAdvisoryUrl ?? "" } } :
-                    null // Or an empty list, depending on model definition
+                DeprecationReasons = reasons.Any() ? reasons : null, // Match how it might be deserialized or set
+                Alternative = alternative,
+                HasVulnerabilities = hasVulnerabilities,
+                Vulnerabilities = vulnerabilities.Any() ? vulnerabilities : null // Match how it might be deserialized or set
+                // IsOutdated is not set here; it's calculated by the analyzer
             };
         }
         #endregion

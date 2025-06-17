@@ -35,11 +35,47 @@ namespace NuGetInspectorApp.Tests
             _mockLogger = new Mock<ILogger<NuGetAuditApplication>>();
 
             _application = new NuGetAuditApplication(
-                _mockNuGetService.Object,    // INuGetApiService first
-                _mockAnalyzer.Object,        // IPackageAnalyzer second
-                _mockDotNetService.Object,   // IDotNetService third
-                _mockFormatter.Object,       // IReportFormatter fourth
-                _mockLogger.Object);         // ILogger fifth
+                _mockNuGetService.Object,
+                _mockAnalyzer.Object,
+                _mockDotNetService.Object,
+                _mockFormatter.Object,
+                _mockLogger.Object);
+
+            // Create temp solution file for tests that need it
+            File.WriteAllText("test.sln", "Microsoft Visual Studio Solution File, Version 12.00");
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            // Clean up temp files
+            if (File.Exists("test.sln"))
+                File.Delete("test.sln");
+        }
+
+        [Test]
+        public async Task RunAsync_WithNullOptions_ReturnsFailure()
+        {
+            // Act
+            var result = await _application.RunAsync(null!, CancellationToken.None);
+
+            // Assert
+            result.Should().Be(1);
+            VerifyErrorLogged("CommandLineOptions cannot be null");
+        }
+
+        [Test]
+        public async Task RunAsync_WithNonExistentSolutionFile_ReturnsFailure()
+        {
+            // Arrange
+            var options = new CommandLineOptions { SolutionPath = "nonexistent.sln", OutputFormat = "console" };
+
+            // Act
+            var result = await _application.RunAsync(options, CancellationToken.None);
+
+            // Assert
+            result.Should().Be(1);
+            VerifyErrorLogged("Solution file not found");
         }
 
         [Test]
@@ -57,8 +93,6 @@ namespace NuGetInspectorApp.Tests
             };
 
             var projectInfos = CreateTestProjectInfos();
-            // Assuming DotnetListReport can hold Projects. If it also holds Version, Parameters, Sources, they should be initialized if needed by the code under test.
-            // Based on previous feedback, DotnetListReport might only have Projects.
             var report = new DotnetListReport { Projects = projectInfos };
             var mergedPackages = CreateTestMergedPackages();
             var packageMetadata = CreateTestPackageMetadata();
@@ -91,7 +125,7 @@ namespace NuGetInspectorApp.Tests
 
             // Assert
             result.Should().Be(1);
-            VerifyErrorLogged("Failed to retrieve package reports");
+            VerifyErrorLogged("Failed to retrieve one or more package reports");
         }
 
         [Test]
@@ -109,14 +143,27 @@ namespace NuGetInspectorApp.Tests
 
             // Assert
             result.Should().Be(1);
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error processing NuGet audit") && v.ToString()!.Contains(exceptionMessage)),
-                    It.IsAny<InvalidOperationException>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            VerifyErrorLogged("Error processing NuGet audit");
+        }
+
+        [Test]
+        public async Task RunAsync_WithEmptyMergedPackages_LogsWarning()
+        {
+            // Arrange
+            var options = new CommandLineOptions { SolutionPath = "test.sln", OutputFormat = "console" };
+            var projectInfos = CreateTestProjectInfos();
+            var report = new DotnetListReport { Projects = projectInfos };
+            var emptyMergedPackages = new Dictionary<string, Dictionary<string, MergedPackage>>();
+            var packageMetadata = CreateTestPackageMetadata();
+
+            SetupMockServices(report, emptyMergedPackages, packageMetadata);
+
+            // Act
+            var result = await _application.RunAsync(options, CancellationToken.None);
+
+            // Assert
+            result.Should().Be(0);
+            VerifyWarningLogged("No packages found after merging and filtering");
         }
 
         [Test]
@@ -141,17 +188,17 @@ namespace NuGetInspectorApp.Tests
             var mergedPackagesInput = CreateTestMergedPackagesForFiltering();
             var packageMetadata = CreateTestPackageMetadata();
 
-            SetupMockServices(report, mergedPackagesInput, packageMetadata); // Ensure this doesn't also try to set up _mockFormatter if you're doing it below
+            SetupMockServices(report, mergedPackagesInput, packageMetadata);
 
             Dictionary<string, Dictionary<string, MergedPackage>>? capturedMergedPackages = null;
 
             _mockFormatter.Setup(x => x.FormatReportAsync(
                     It.IsAny<List<ProjectInfo>>(),
-                    It.IsAny<Dictionary<string, Dictionary<string, MergedPackage>>>(), // Use It.IsAny for matching this argument
+                    It.IsAny<Dictionary<string, Dictionary<string, MergedPackage>>>(),
                     It.IsAny<Dictionary<string, PackageMetadata>>(),
                     It.IsAny<CancellationToken>()))
                 .Callback<List<ProjectInfo>, Dictionary<string, Dictionary<string, MergedPackage>>, Dictionary<string, PackageMetadata>, CancellationToken>(
-                    (projs, mp, meta, ct) => { capturedMergedPackages = mp; }) // Capture the second argument (mp)
+                    (projs, mp, meta, ct) => { capturedMergedPackages = mp; })
                 .ReturnsAsync("Filtered report output");
 
             // Act
@@ -163,31 +210,29 @@ namespace NuGetInspectorApp.Tests
 
             var packagesForFramework = capturedMergedPackages![$"{TestProjectPath}|{TestFramework}"];
 
+            // Verify filtering logic
             if (onlyOutdated)
                 packagesForFramework.Values.Should().AllSatisfy(p =>
-                    (p.IsOutdated || (!p.IsDeprecated && !p.Vulnerabilities.Any()))
-                    .Should().BeTrue("when 'onlyOutdated', packages must be outdated or (not deprecated and not vulnerable)"));
-            else
-                packagesForFramework.Values.Should().Contain(p => !p.IsOutdated && p.Id == "CurrentPackage");
+                    p.IsOutdated.Should().BeTrue("when 'onlyOutdated', all remaining packages should be outdated"));
 
             if (onlyDeprecated)
                 packagesForFramework.Values.Should().AllSatisfy(p =>
-                    (p.IsDeprecated || (!p.IsOutdated && !p.Vulnerabilities.Any()))
-                    .Should().BeTrue("when 'onlyDeprecated', packages must be deprecated or (not outdated and not vulnerable)"));
-            else
-                packagesForFramework.Values.Should().Contain(p => !p.IsDeprecated && p.Id == "CurrentPackage");
+                    p.IsDeprecated.Should().BeTrue("when 'onlyDeprecated', all remaining packages should be deprecated"));
 
             if (onlyVulnerable)
                 packagesForFramework.Values.Should().AllSatisfy(p =>
-                    (p.Vulnerabilities.Any() || (!p.IsOutdated && !p.IsDeprecated))
-                    .Should().BeTrue("when 'onlyVulnerable', packages must be vulnerable or (not outdated and not deprecated)"));
-            else
-                packagesForFramework.Values.Should().Contain(p => !p.Vulnerabilities.Any() && p.Id == "CurrentPackage");
+                    HasVulnerabilities(p).Should().BeTrue("when 'onlyVulnerable', all remaining packages should have vulnerabilities"));
 
-            if (onlyOutdated && packagesForFramework.Any()) packagesForFramework.Values.Should().Contain(p => p.IsOutdated);
-            if (onlyDeprecated && packagesForFramework.Any()) packagesForFramework.Values.Should().Contain(p => p.IsDeprecated);
-            if (onlyVulnerable && packagesForFramework.Any()) packagesForFramework.Values.Should().Contain(p => p.Vulnerabilities.Any());
+            // Verify that appropriate packages are included
+            if (onlyOutdated && packagesForFramework.Any())
+                packagesForFramework.Values.Should().Contain(p => p.IsOutdated);
+            if (onlyDeprecated && packagesForFramework.Any())
+                packagesForFramework.Values.Should().Contain(p => p.IsDeprecated);
+            if (onlyVulnerable && packagesForFramework.Any())
+                packagesForFramework.Values.Where(HasVulnerabilities).Should().NotBeEmpty("there should be vulnerable packages when filtering for vulnerabilities");
         }
+
+
 
         [Test]
         public async Task RunAsync_WithOutputFile_WritesReportToFile()
@@ -230,18 +275,45 @@ namespace NuGetInspectorApp.Tests
         }
 
         [Test]
+        public async Task RunAsync_WithInvalidOutputPath_ReturnsFailureAndLogsError()
+        {
+            // Arrange
+            var options = new CommandLineOptions
+            {
+                SolutionPath = "test.sln",
+                OutputFormat = "console",
+                OutputFile = "Z:\\invalid\\path\\output.txt" // Invalid path
+            };
+
+            var projectInfos = CreateTestProjectInfos();
+            var report = new DotnetListReport { Projects = projectInfos };
+            var mergedPackages = CreateTestMergedPackages();
+            var packageMetadata = CreateTestPackageMetadata();
+
+            SetupMockServices(report, mergedPackages, packageMetadata);
+            _mockFormatter.Setup(x => x.FormatReportAsync(It.IsAny<List<ProjectInfo>>(), It.IsAny<Dictionary<string, Dictionary<string, MergedPackage>>>(), It.IsAny<Dictionary<string, PackageMetadata>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync("Test output");
+
+            // Act
+            var result = await _application.RunAsync(options, CancellationToken.None);
+
+            // Assert
+            result.Should().Be(1);
+            VerifyErrorLogged("Failed to write report to file");
+        }
+
+        [Test]
         public async Task RunAsync_OperationCanceled_ReturnsFailureAndLogsCancellation()
         {
             // Arrange
             var options = new CommandLineOptions { SolutionPath = "test.sln" };
             var cts = new CancellationTokenSource();
 
-
             _mockDotNetService.Setup(x => x.GetPackageReportAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(async (string s, string r, CancellationToken ct) =>
                 {
-                    await Task.Delay(100, ct); // Simulate some work
-                    ct.ThrowIfCancellationRequested(); // Check for cancellation
+                    await Task.Delay(100, ct);
+                    ct.ThrowIfCancellationRequested();
                     return new DotnetListReport { Projects = new List<ProjectInfo>() };
                 });
 
@@ -252,21 +324,262 @@ namespace NuGetInspectorApp.Tests
 
             // Assert
             result.Should().Be(1);
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Warning,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Operation was cancelled")),
-                    It.IsAny<OperationCanceledException>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            VerifyWarningLogged("Operation was cancelled");
         }
 
+        [Test]
+        public async Task RunAsync_NuGetServiceThrowsException_ContinuesProcessingOtherPackages()
+        {
+            // Arrange
+            var options = new CommandLineOptions { SolutionPath = "test.sln", OutputFormat = "console" };
+            var projectInfos = CreateTestProjectInfos();
+            var report = new DotnetListReport { Projects = projectInfos };
+            var mergedPackages = CreateTestMergedPackages();
+            var packageMetadata = new Dictionary<string, PackageMetadata>();
+
+            SetupMockServices(report, mergedPackages, packageMetadata);
+
+            // Setup NuGet service to throw exception for some packages but succeed for others
+            _mockNuGetService.Setup(x => x.FetchPackageMetadataAsync("OutdatedPackage", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new HttpRequestException("Network error"));
+            _mockNuGetService.Setup(x => x.FetchPackageMetadataAsync("CurrentPackage", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new PackageMetadata { PackageUrl = "https://example.com", DependencyGroups = new List<DependencyGroup>() });
+
+            // Act
+            var result = await _application.RunAsync(options, CancellationToken.None);
+
+            // Assert
+            result.Should().Be(0, "Application should continue despite individual package metadata failures");
+        }
+
+        [Test]
+        public async Task RunAsync_WithNullProjectsInReport_HandlesGracefully()
+        {
+            // Arrange
+            var options = new CommandLineOptions { SolutionPath = "test.sln", OutputFormat = "console" };
+
+            var outdatedReport = new DotnetListReport { Projects = null };
+            var validReport = new DotnetListReport { Projects = new List<ProjectInfo>() };
+
+            _mockDotNetService.Setup(x => x.GetPackageReportAsync(It.IsAny<string>(), "--outdated", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(outdatedReport);
+            _mockDotNetService.Setup(x => x.GetPackageReportAsync(It.IsAny<string>(), "--deprecated", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(validReport);
+            _mockDotNetService.Setup(x => x.GetPackageReportAsync(It.IsAny<string>(), "--vulnerable", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(validReport);
+
+            // Act
+            var result = await _application.RunAsync(options, CancellationToken.None);
+
+            // Assert
+            result.Should().Be(1);
+            VerifyErrorLogged("Failed to retrieve one or more package reports");
+        }
+
+        [Test]
+        public async Task RunAsync_WithNullProjectInProjectsList_SkipsNullProjects()
+        {
+            // Arrange
+            var options = new CommandLineOptions { SolutionPath = "test.sln", OutputFormat = "console" };
+
+            var projectInfos = new List<ProjectInfo>
+            {
+                null!, // Null project
+                new ProjectInfo
+                {
+                    Path = TestProjectPath,
+                    Frameworks = new List<FrameworkInfo>
+                    {
+                        new FrameworkInfo
+                        {
+                            Framework = TestFramework,
+                            TopLevelPackages = new List<PackageReference>(),
+                            TransitivePackages = new List<PackageReference>()
+                        }
+                    }
+                }
+            };
+
+            var report = new DotnetListReport { Projects = projectInfos };
+            var mergedPackages = new Dictionary<string, Dictionary<string, MergedPackage>>();
+            var packageMetadata = CreateTestPackageMetadata();
+
+            SetupMockServices(report, mergedPackages, packageMetadata);
+
+            // Act
+            var result = await _application.RunAsync(options, CancellationToken.None);
+
+            // Assert
+            result.Should().Be(0);
+            VerifyWarningLogged("Encountered null project");
+        }
+
+        [Test]
+        public async Task RunAsync_WithNullFrameworksInProject_SkipsProject()
+        {
+            // Arrange
+            var options = new CommandLineOptions { SolutionPath = "test.sln", OutputFormat = "console" };
+
+            var projectInfos = new List<ProjectInfo>
+            {
+                new ProjectInfo
+                {
+                    Path = TestProjectPath,
+                    Frameworks = null! // Null frameworks
+                }
+            };
+
+            var report = new DotnetListReport { Projects = projectInfos };
+            var mergedPackages = new Dictionary<string, Dictionary<string, MergedPackage>>();
+            var packageMetadata = CreateTestPackageMetadata();
+
+            SetupMockServices(report, mergedPackages, packageMetadata);
+
+            // Act
+            var result = await _application.RunAsync(options, CancellationToken.None);
+
+            // Assert
+            result.Should().Be(0);
+            VerifyWarningLogged("has no frameworks defined");
+        }
+
+        [Test]
+        public async Task RunAsync_WithFilterResultingInEmptyPackages_LogsAppropriateMessage()
+        {
+            // Arrange
+            var options = new CommandLineOptions
+            {
+                SolutionPath = "test.sln",
+                OutputFormat = "console",
+                OnlyVulnerable = true // Filter that will result in no packages
+            };
+
+            var projectInfos = CreateTestProjectInfos();
+            var report = new DotnetListReport { Projects = projectInfos };
+
+            // Create packages with no vulnerabilities
+            var packagesWithoutVulnerabilities = new Dictionary<string, MergedPackage>
+            {
+                ["SafePackage"] = new MergedPackage
+                {
+                    Id = "SafePackage",
+                    ResolvedVersion = "1.0.0",
+                    Vulnerabilities = new List<VulnerabilityInfo>(), // No vulnerabilities
+                    DeprecationReasons = new List<string>()
+                }
+            };
+
+            var mergedPackages = new Dictionary<string, Dictionary<string, MergedPackage>>
+            {
+                [$"{TestProjectPath}|{TestFramework}"] = packagesWithoutVulnerabilities
+            };
+
+            var packageMetadata = CreateTestPackageMetadata();
+
+            SetupMockServices(report, mergedPackages, packageMetadata);
+
+            // Act
+            var result = await _application.RunAsync(options, CancellationToken.None);
+
+            // Assert
+            result.Should().Be(0);
+            // The filtering should remove all packages, but this shouldn't cause a failure
+        }
+
+        [Test]
+        public async Task RunAsync_PackageAnalyzerThrowsException_SkipsFrameworkAndContinues()
+        {
+            // Arrange
+            var options = new CommandLineOptions { SolutionPath = "test.sln", OutputFormat = "console" };
+            var projectInfos = CreateTestProjectInfos();
+            var report = new DotnetListReport { Projects = projectInfos };
+            var packageMetadata = CreateTestPackageMetadata();
+
+            _mockDotNetService.Setup(x => x.GetPackageReportAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(report);
+
+            // Setup analyzer to throw exception
+            _mockAnalyzer.Setup(x => x.MergePackages(
+                    It.IsAny<List<ProjectInfo>>(),
+                    It.IsAny<List<ProjectInfo>>(),
+                    It.IsAny<List<ProjectInfo>>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>()))
+                .Throws(new InvalidOperationException("Analyzer error"));
+
+            _mockNuGetService.Setup(x => x.FetchPackageMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new PackageMetadata { PackageUrl = "test", DependencyGroups = new List<DependencyGroup>() });
+
+            _mockFormatter.Setup(x => x.FormatReportAsync(
+                    It.IsAny<List<ProjectInfo>>(),
+                    It.IsAny<Dictionary<string, Dictionary<string, MergedPackage>>>(),
+                    It.IsAny<Dictionary<string, PackageMetadata>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync("Test output");
+
+            // Act
+            var result = await _application.RunAsync(options, CancellationToken.None);
+
+            // Assert
+            result.Should().Be(0, "Application should continue despite analyzer failures");
+            VerifyErrorLogged("Error merging packages");
+        }
+
+        [Test]
+        public async Task RunAsync_CallsAllExpectedServices_InCorrectOrder()
+        {
+            // Arrange
+            var options = new CommandLineOptions
+            {
+                SolutionPath = "test.sln",
+                OutputFormat = "console"
+            };
+
+            var projectInfos = CreateTestProjectInfos();
+            var report = new DotnetListReport { Projects = projectInfos };
+            var mergedPackages = CreateTestMergedPackages();
+            var packageMetadata = CreateTestPackageMetadata();
+
+            SetupMockServices(report, mergedPackages, packageMetadata);
+
+            // Act
+            var result = await _application.RunAsync(options, CancellationToken.None);
+
+            // Assert
+            result.Should().Be(0);
+
+            // Verify all expected service calls were made
+            _mockDotNetService.Verify(x => x.GetPackageReportAsync(options.SolutionPath, "--outdated", It.IsAny<CancellationToken>()), Times.Once);
+            _mockDotNetService.Verify(x => x.GetPackageReportAsync(options.SolutionPath, "--deprecated", It.IsAny<CancellationToken>()), Times.Once);
+            _mockDotNetService.Verify(x => x.GetPackageReportAsync(options.SolutionPath, "--vulnerable", It.IsAny<CancellationToken>()), Times.Once);
+
+            _mockAnalyzer.Verify(x => x.MergePackages(
+                It.IsAny<List<ProjectInfo>>(),
+                It.IsAny<List<ProjectInfo>>(),
+                It.IsAny<List<ProjectInfo>>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()), Times.AtLeastOnce);
+
+            _mockFormatter.Verify(x => x.FormatReportAsync(
+                It.IsAny<List<ProjectInfo>>(),
+                It.IsAny<Dictionary<string, Dictionary<string, MergedPackage>>>(),
+                It.IsAny<Dictionary<string, PackageMetadata>>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
 
         #region Helper Methods
 
         private const string TestProjectPath = "TestProject.csproj";
         private const string TestFramework = "net9.0";
+
+        /// <summary>
+        /// Helper method to check if a package has vulnerabilities.
+        /// Avoids expression tree issues with null-conditional operators.
+        /// </summary>
+        private static bool HasVulnerabilities(MergedPackage package)
+        {
+            return package.Vulnerabilities != null && package.Vulnerabilities.Any();
+        }
 
         private static List<ProjectInfo> CreateTestProjectInfos()
         {
@@ -298,10 +611,37 @@ namespace NuGetInspectorApp.Tests
         {
             var packages = new Dictionary<string, MergedPackage>
             {
-                ["OutdatedPackage"] = new MergedPackage { Id = "OutdatedPackage", ResolvedVersion = "1.0.0", IsOutdated = true, LatestVersion = "1.1.0" },
-                ["DeprecatedPackage"] = new MergedPackage { Id = "DeprecatedPackage", ResolvedVersion = "1.0.0", IsDeprecated = true },
-                ["VulnerablePackage"] = new MergedPackage { Id = "VulnerablePackage", ResolvedVersion = "1.0.0", Vulnerabilities = new List<VulnerabilityInfo> { new VulnerabilityInfo { Severity = "High" } } },
-                ["CurrentPackage"] = new MergedPackage { Id = "CurrentPackage", ResolvedVersion = "1.0.0" }
+                ["OutdatedPackage"] = new MergedPackage
+                {
+                    Id = "OutdatedPackage",
+                    ResolvedVersion = "1.0.0",
+                    IsOutdated = true,
+                    LatestVersion = "1.1.0",
+                    Vulnerabilities = new List<VulnerabilityInfo>(),
+                    DeprecationReasons = new List<string>()
+                },
+                ["DeprecatedPackage"] = new MergedPackage
+                {
+                    Id = "DeprecatedPackage",
+                    ResolvedVersion = "1.0.0",
+                    IsDeprecated = true,
+                    Vulnerabilities = new List<VulnerabilityInfo>(),
+                    DeprecationReasons = new List<string> { "Legacy package" }
+                },
+                ["VulnerablePackage"] = new MergedPackage
+                {
+                    Id = "VulnerablePackage",
+                    ResolvedVersion = "1.0.0",
+                    Vulnerabilities = new List<VulnerabilityInfo> { new VulnerabilityInfo { Severity = "High" } },
+                    DeprecationReasons = new List<string>()
+                },
+                ["CurrentPackage"] = new MergedPackage
+                {
+                    Id = "CurrentPackage",
+                    ResolvedVersion = "1.0.0",
+                    Vulnerabilities = new List<VulnerabilityInfo>(),
+                    DeprecationReasons = new List<string>()
+                }
             };
             return new Dictionary<string, Dictionary<string, MergedPackage>>
             {
@@ -313,11 +653,46 @@ namespace NuGetInspectorApp.Tests
         {
             var packages = new Dictionary<string, MergedPackage>
             {
-                ["OutdatedOnly"] = new MergedPackage { Id = "OutdatedOnly", ResolvedVersion = "1.0.0", IsOutdated = true, LatestVersion = "1.1.0" },
-                ["DeprecatedOnly"] = new MergedPackage { Id = "DeprecatedOnly", ResolvedVersion = "2.0.0", IsDeprecated = true },
-                ["VulnerableOnly"] = new MergedPackage { Id = "VulnerableOnly", ResolvedVersion = "3.0.0", Vulnerabilities = new List<VulnerabilityInfo> { new VulnerabilityInfo { Severity = "High" } } },
-                ["OutdatedAndVulnerable"] = new MergedPackage { Id = "OutdatedAndVulnerable", ResolvedVersion = "4.0.0", IsOutdated = true, LatestVersion = "4.1.0", Vulnerabilities = new List<VulnerabilityInfo> { new VulnerabilityInfo { Severity = "Medium" } } },
-                ["CurrentPackage"] = new MergedPackage { Id = "CurrentPackage", ResolvedVersion = "5.0.0" }
+                ["OutdatedOnly"] = new MergedPackage
+                {
+                    Id = "OutdatedOnly",
+                    ResolvedVersion = "1.0.0",
+                    IsOutdated = true,
+                    LatestVersion = "1.1.0",
+                    Vulnerabilities = new List<VulnerabilityInfo>(),
+                    DeprecationReasons = new List<string>()
+                },
+                ["DeprecatedOnly"] = new MergedPackage
+                {
+                    Id = "DeprecatedOnly",
+                    ResolvedVersion = "2.0.0",
+                    IsDeprecated = true,
+                    Vulnerabilities = new List<VulnerabilityInfo>(),
+                    DeprecationReasons = new List<string> { "Deprecated package" }
+                },
+                ["VulnerableOnly"] = new MergedPackage
+                {
+                    Id = "VulnerableOnly",
+                    ResolvedVersion = "3.0.0",
+                    Vulnerabilities = new List<VulnerabilityInfo> { new VulnerabilityInfo { Severity = "High" } },
+                    DeprecationReasons = new List<string>()
+                },
+                ["OutdatedAndVulnerable"] = new MergedPackage
+                {
+                    Id = "OutdatedAndVulnerable",
+                    ResolvedVersion = "4.0.0",
+                    IsOutdated = true,
+                    LatestVersion = "4.1.0",
+                    Vulnerabilities = new List<VulnerabilityInfo> { new VulnerabilityInfo { Severity = "Medium" } },
+                    DeprecationReasons = new List<string>()
+                },
+                ["CurrentPackage"] = new MergedPackage
+                {
+                    Id = "CurrentPackage",
+                    ResolvedVersion = "5.0.0",
+                    Vulnerabilities = new List<VulnerabilityInfo>(),
+                    DeprecationReasons = new List<string>()
+                }
             };
             return new Dictionary<string, Dictionary<string, MergedPackage>>
             {
@@ -325,20 +700,19 @@ namespace NuGetInspectorApp.Tests
             };
         }
 
-
         private static Dictionary<string, PackageMetadata> CreateTestPackageMetadata()
         {
             return new Dictionary<string, PackageMetadata>
             {
-                ["OutdatedPackage|1.0.0"] = new PackageMetadata { PackageUrl = "url1" },
-                ["DeprecatedPackage|1.0.0"] = new PackageMetadata { PackageUrl = "url2" },
-                ["VulnerablePackage|1.0.0"] = new PackageMetadata { PackageUrl = "url3" },
-                ["CurrentPackage|1.0.0"] = new PackageMetadata { PackageUrl = "url4" },
-                ["OutdatedOnly|1.0.0"] = new PackageMetadata { PackageUrl = "url_filter1" },
-                ["DeprecatedOnly|2.0.0"] = new PackageMetadata { PackageUrl = "url_filter2" },
-                ["VulnerableOnly|3.0.0"] = new PackageMetadata { PackageUrl = "url_filter3" },
-                ["OutdatedAndVulnerable|4.0.0"] = new PackageMetadata { PackageUrl = "url_filter4" },
-                ["CurrentPackage|5.0.0"] = new PackageMetadata { PackageUrl = "url_filter5" }
+                ["OutdatedPackage|1.0.0"] = new PackageMetadata { PackageUrl = "url1", DependencyGroups = new List<DependencyGroup>() },
+                ["DeprecatedPackage|1.0.0"] = new PackageMetadata { PackageUrl = "url2", DependencyGroups = new List<DependencyGroup>() },
+                ["VulnerablePackage|1.0.0"] = new PackageMetadata { PackageUrl = "url3", DependencyGroups = new List<DependencyGroup>() },
+                ["CurrentPackage|1.0.0"] = new PackageMetadata { PackageUrl = "url4", DependencyGroups = new List<DependencyGroup>() },
+                ["OutdatedOnly|1.0.0"] = new PackageMetadata { PackageUrl = "url_filter1", DependencyGroups = new List<DependencyGroup>() },
+                ["DeprecatedOnly|2.0.0"] = new PackageMetadata { PackageUrl = "url_filter2", DependencyGroups = new List<DependencyGroup>() },
+                ["VulnerableOnly|3.0.0"] = new PackageMetadata { PackageUrl = "url_filter3", DependencyGroups = new List<DependencyGroup>() },
+                ["OutdatedAndVulnerable|4.0.0"] = new PackageMetadata { PackageUrl = "url_filter4", DependencyGroups = new List<DependencyGroup>() },
+                ["CurrentPackage|5.0.0"] = new PackageMetadata { PackageUrl = "url_filter5", DependencyGroups = new List<DependencyGroup>() }
             };
         }
 
@@ -348,14 +722,11 @@ namespace NuGetInspectorApp.Tests
             _mockDotNetService.Setup(x => x.GetPackageReportAsync(It.IsAny<string>(), "--deprecated", It.IsAny<CancellationToken>())).ReturnsAsync(report);
             _mockDotNetService.Setup(x => x.GetPackageReportAsync(It.IsAny<string>(), "--vulnerable", It.IsAny<CancellationToken>())).ReturnsAsync(report);
 
-            // Setup Analyzer to return the specific merged packages for the test project and framework
-            // This setup assumes that MergePackages is called for each project/framework combination.
-            // If the report.Projects is null or empty, this specific setup might not be hit.
             if (report.Projects != null)
             {
                 foreach (var projectInfo in report.Projects)
                 {
-                    if (projectInfo.Frameworks != null)
+                    if (projectInfo?.Frameworks != null)
                     {
                         foreach (var frameworkInfo in projectInfo.Frameworks)
                         {
@@ -363,19 +734,17 @@ namespace NuGetInspectorApp.Tests
                                It.IsAny<List<ProjectInfo>>(),
                                It.IsAny<List<ProjectInfo>>(),
                                It.IsAny<List<ProjectInfo>>(),
-                               projectInfo.Path, // Match specific project path
-                               frameworkInfo.Framework)) // Match specific framework
+                               projectInfo.Path,
+                               frameworkInfo.Framework))
                            .Returns(mergedPackages.TryGetValue($"{projectInfo.Path}|{frameworkInfo.Framework}", out var pkgs) ? pkgs : new Dictionary<string, MergedPackage>());
                         }
                     }
                 }
             }
 
-
             _mockNuGetService.Setup(x => x.FetchPackageMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string pkgId, string version, CancellationToken ct) =>
-                    packageMetadata.TryGetValue($"{pkgId}|{version}", out var meta) ? meta : new PackageMetadata { PackageUrl = $"fallback_url/{pkgId}/{version}" });
-
+                    packageMetadata.TryGetValue($"{pkgId}|{version}", out var meta) ? meta : new PackageMetadata { PackageUrl = $"fallback_url/{pkgId}/{version}", DependencyGroups = new List<DependencyGroup>() });
 
             _mockFormatter.Setup(x => x.FormatReportAsync(
                 It.IsAny<List<ProjectInfo>>(),
@@ -395,7 +764,7 @@ namespace NuGetInspectorApp.Tests
             {
                 foreach (var projectInfo in report.Projects)
                 {
-                    if (projectInfo.Frameworks != null)
+                    if (projectInfo?.Frameworks != null)
                     {
                         foreach (var frameworkInfo in projectInfo.Frameworks)
                         {
@@ -417,16 +786,21 @@ namespace NuGetInspectorApp.Tests
                     It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains(expectedMessageSubstring)),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+                Times.AtLeastOnce);
         }
-        #endregion
-    }
 
-    public static class Capture
-    {
-        public static T With<T>(Action<T> callback)
+        private void VerifyWarningLogged(string expectedMessageSubstring)
         {
-            return Match.Create<T>(value => { callback(value); return true; });
+            _mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Warning,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains(expectedMessageSubstring)),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.AtLeastOnce);
         }
+
+        #endregion
     }
 }

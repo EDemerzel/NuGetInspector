@@ -29,13 +29,13 @@ namespace NuGetInspectorApp.Formatters
             foreach (var project in projects)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                
+
                 sb.AppendLine($"\n=== Project: {Path.GetFileName(project.Path)} ===\n");
 
                 foreach (var fw in project.Frameworks)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    
+
                     sb.AppendLine($"Framework: {fw.Framework}\n");
 
                     var projectKey = $"{project.Path}|{fw.Framework}";
@@ -59,8 +59,8 @@ namespace NuGetInspectorApp.Formatters
         /// <param name="merged">The collection of merged packages to format.</param>
         /// <param name="packageMetadata">The package metadata dictionary for additional details.</param>
         private static void FormatDirectPackages(
-            StringBuilder sb, 
-            Dictionary<string, MergedPackage> merged, 
+            StringBuilder sb,
+            Dictionary<string, MergedPackage> merged,
             Dictionary<string, PackageMetadata> packageMetadata)
         {
             foreach (var pkg in merged.Values.OrderBy(p => p.Id, StringComparer.OrdinalIgnoreCase))
@@ -116,7 +116,7 @@ namespace NuGetInspectorApp.Formatters
         /// <param name="pkg">The package to format vulnerability information for.</param>
         private static void FormatVulnerabilityInformation(StringBuilder sb, MergedPackage pkg)
         {
-            if (pkg.Vulnerabilities.Count > 0)
+            if (pkg.Vulnerabilities?.Count > 0)
             {
                 sb.AppendLine("    Vulnerabilities:");
                 foreach (var v in pkg.Vulnerabilities)
@@ -136,9 +136,9 @@ namespace NuGetInspectorApp.Formatters
         /// <param name="packageMetadata">The package metadata dictionary.</param>
         /// <param name="metaKey">The metadata key for the current package.</param>
         private static void FormatDependencyInformation(
-            StringBuilder sb, 
-            MergedPackage pkg, 
-            Dictionary<string, PackageMetadata> packageMetadata, 
+            StringBuilder sb,
+            MergedPackage pkg,
+            Dictionary<string, PackageMetadata> packageMetadata,
             string metaKey)
         {
             if (packageMetadata.TryGetValue(metaKey, out var meta))
