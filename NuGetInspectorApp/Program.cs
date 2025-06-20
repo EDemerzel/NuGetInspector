@@ -194,6 +194,23 @@ internal static class Program
             }
         });
 
+        // Add a new option for specifying a custom config file
+        var configFileOption = new Option<FileInfo?>(
+            aliases: new[] { "--config", "-c" },
+            description: "Path to .nugetinspector configuration file")
+        {
+            ArgumentHelpName = "FILE",
+            Arity = ArgumentArity.ZeroOrOne
+        };
+        configFileOption.AddValidator(result =>
+        {
+            var file = result.GetValueForOption(configFileOption);
+            if (file != null && !file.Exists)
+            {
+                result.ErrorMessage = $"Configuration file not found: {file.FullName}";
+            }
+        });
+
         var rootCommand = new RootCommand("A comprehensive tool for analyzing NuGet packages in .NET solutions")
         {
             solutionPathArgument,
@@ -205,7 +222,8 @@ internal static class Program
             onlyDeprecatedOption,
             maxConcurrentOption,
             timeoutOption,
-            retryAttemptsOption
+            retryAttemptsOption,
+            configFileOption // Add the new config file option
         };
 
         // Use the context-based handler to avoid parameter limit
@@ -221,24 +239,34 @@ internal static class Program
             var maxConcurrent = context.ParseResult.GetValueForOption(maxConcurrentOption);
             var timeout = context.ParseResult.GetValueForOption(timeoutOption);
             var retryAttempts = context.ParseResult.GetValueForOption(retryAttemptsOption);
+            var configFile = context.ParseResult.GetValueForOption(configFileOption);
+
+            // Load configuration from file first, then override with command line options
+            var config = AppSettings.LoadFromConfigFile(configFile?.FullName);
+
+            // Command line options override config file settings
+            if (maxConcurrent != 5) // 5 is the default, so only override if user specified a different value
+                config.MaxConcurrentRequests = maxConcurrent;
+
+            if (timeout != 30) // 30 is the default
+                config.HttpTimeoutSeconds = timeout;
+
+            if (retryAttempts != 3) // 3 is the default
+                config.MaxRetryAttempts = retryAttempts;
+
+            // Verbose flag from command line always takes precedence
+            if (verbose)
+                config.VerboseLogging = true;
 
             var options = new CommandLineOptions
             {
                 SolutionPath = solutionPath.FullName,
                 OutputFormat = format,
                 OutputFile = output?.FullName,
-                VerboseOutput = verbose,
+                VerboseOutput = config.VerboseLogging || verbose, // Config file OR command line
                 OnlyOutdated = onlyOutdated,
                 OnlyVulnerable = onlyVulnerable,
                 OnlyDeprecated = onlyDeprecated
-            };
-
-            var config = new AppSettings
-            {
-                VerboseLogging = verbose,
-                MaxConcurrentRequests = maxConcurrent,
-                HttpTimeoutSeconds = timeout,
-                MaxRetryAttempts = retryAttempts
             };
 
             // Validate all configurations
@@ -252,6 +280,18 @@ internal static class Program
                 await Console.Error.WriteLineAsync($"Configuration error: {ex.Message}");
                 context.ExitCode = 1;
                 return;
+            }
+
+            // Display configuration info if verbose
+            if (config.VerboseLogging)
+            {
+                Console.WriteLine("Configuration:");
+                Console.WriteLine($"  NuGet API URL: {config.NuGetApiBaseUrl}");
+                Console.WriteLine($"  Max Concurrent: {config.MaxConcurrentRequests}");
+                Console.WriteLine($"  Timeout: {config.HttpTimeoutSeconds}s");
+                Console.WriteLine($"  Retry Attempts: {config.MaxRetryAttempts}");
+                Console.WriteLine($"  Verbose Logging: {config.VerboseLogging}");
+                Console.WriteLine();
             }
 
             var host = CreateHostBuilder(options, config).Build();
@@ -309,7 +349,6 @@ internal static class Program
             .ConfigureServices((context, services) =>
             {
                 services.AddSingleton(config); // config is the AppSettings instance from CreateHostBuilder parameters
-                                               // services.AddSingleton<INuGetAPIService, NuGetApiService>(); // Removed: Will be handled by AddHttpClient
                 services.AddSingleton<IPackageAnalyzer, PackageAnalyzer>();
                 services.AddSingleton<IDotNetService, DotNetService>();
                 services.AddSingleton<IReportFormatter, ConsoleReportFormatter>(); // Consider making this dynamic based on options.OutputFormat
@@ -322,7 +361,7 @@ internal static class Program
                     options.UseUtcTimestamp = false;
                 });
 
-                // Add HttpClient with proper configuration for INuGetAPIService
+                // Add HttpClient with proper configuration for INuGetApiService
                 services.AddHttpClient<INuGetApiService, NuGetApiService>((serviceProvider, client) =>
                     {
                         var appConfig = serviceProvider.GetRequiredService<AppSettings>();

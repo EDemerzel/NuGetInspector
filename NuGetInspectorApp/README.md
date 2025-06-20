@@ -64,18 +64,18 @@ dotnet run -- solution.sln --max-concurrent 10 --timeout 60 --retry-attempts 5
 
 ### Command Line Options
 
-| Option | Description | Default | Range |
-|--------|-------------|---------|-------|
-| `<solution-path>` | Path to the solution (.sln) file | Required | Must be valid .sln file |
-| `--format <format>` | Output format: console, html, markdown, json | console | console only (currently) |
-| `--output <file>` | Output file path (optional) | Console output | Valid file path |
-| `--verbose` | Enable verbose logging | false | - |
-| `--only-outdated` | Show only outdated packages | false | - |
-| `--only-vulnerable` | Show only vulnerable packages | false | - |
-| `--only-deprecated` | Show only deprecated packages | false | - |
-| `--max-concurrent` | Maximum concurrent HTTP requests | 5 | 1-20 |
-| `--timeout` | HTTP request timeout in seconds | 30 | 5-300 |
-| `--retry-attempts` | Maximum retry attempts | 3 | 0-10 |
+| Option              | Description                                  | Default        | Range                    |
+| ------------------- | -------------------------------------------- | -------------- | ------------------------ |
+| `<solution-path>`   | Path to the solution (.sln) file             | Required       | Must be valid .sln file  |
+| `--format <format>` | Output format: console, html, markdown, json | console        | console only (currently) |
+| `--output <file>`   | Output file path (optional)                  | Console output | Valid file path          |
+| `--verbose`         | Enable verbose logging                       | false          | -                        |
+| `--only-outdated`   | Show only outdated packages                  | false          | -                        |
+| `--only-vulnerable` | Show only vulnerable packages                | false          | -                        |
+| `--only-deprecated` | Show only deprecated packages                | false          | -                        |
+| `--max-concurrent`  | Maximum concurrent HTTP requests             | 5              | 1-20                     |
+| `--timeout`         | HTTP request timeout in seconds              | 30             | 5-300                    |
+| `--retry-attempts`  | Maximum retry attempts                       | 3              | 0-10                     |
 
 ### Docker Usage
 
@@ -145,6 +145,47 @@ public class AppSettings
 }
 ```
 
+### Configuration File Usage
+
+Create a `.nugetinspector` file in your project directory or home directory:
+
+```bash
+# Use default configuration file in current directory
+dotnet run -- solution.sln
+
+# Use custom configuration file
+dotnet run -- solution.sln --config ./custom-config.json
+
+# Command line options override config file settings
+dotnet run -- solution.sln --verbose --max-concurrent 10
+```
+
+#### Configuration File Locations (checked in order)
+
+1. File specified with `--config` option
+2. `.nugetinspector` in current directory
+3. `.nugetinspector` in user home directory
+4. `.nugetinspector` in current working directory
+
+#### Example Configuration
+
+```json
+{
+    "apiSettings": {
+        "baseUrl": "https://api.nuget.org/v3/registration5-gz-semver2",
+        "timeout": 45,
+        "maxConcurrentRequests": 3
+    },
+    "outputSettings": {
+        "verboseLogging": true
+    },
+    "filterSettings": {
+        "excludePackages": ["Microsoft.NET.Test.Sdk"],
+        "minSeverity": "Medium"
+    }
+}
+```
+
 ### API Endpoints
 
 The application uses the NuGet v3 API with support for multiple endpoints:
@@ -172,9 +213,9 @@ The application uses the NuGet v3 API with support for multiple endpoints:
 
 1. **Input Validation**: Parse and validate command-line arguments with security checks
 2. **Parallel Report Generation**: Execute multiple `dotnet list package` commands concurrently:
-   - `--outdated`: Packages with newer versions available
-   - `--deprecated`: Packages marked as deprecated
-   - `--vulnerable`: Packages with known security vulnerabilities
+    - `--outdated`: Packages with newer versions available
+    - `--deprecated`: Packages marked as deprecated
+    - `--vulnerable`: Packages with known security vulnerabilities
 3. **Package Merging**: Combine data from all report types using `PackageAnalyzer`
 4. **Metadata Enrichment**: Fetch detailed information from NuGet API with retry logic
 5. **Filtering**: Apply user-specified filters (outdated, deprecated, vulnerable)

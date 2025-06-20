@@ -1,32 +1,32 @@
 {
-  "$schema": "./nugetinspector-schema.json",
-  "apiSettings": {
-    "baseUrl": "https://api.nuget.org/v3/registration5-gz-semver2",
-    "galleryUrl": "https://www.nuget.org/packages",
-    "timeout": 30,
-    "maxConcurrentRequests": 5,
-    "retryAttempts": 3,
-    "useCompression": true
-  },
-  "outputSettings": {
-    "defaultFormat": "console",
-    "includeTransitive": true,
-    "showDependencies": true,
-    "verboseLogging": false
-  },
-  "filterSettings": {
-    "excludePackages": [
-      "Microsoft.NET.Test.Sdk",
-      "coverlet.collector"
-    ],
-    "includePrerelease": false,
-    "minSeverity": "Low"
-  },
-  "reportSettings": {
-    "groupByFramework": true,
-    "sortByName": true,
-    "showOutdatedOnly": false,
-    "showVulnerableOnly": false,
-    "showDeprecatedOnly": false
-  }
+    "$schema": "./nugetinspector-schema.json",
+    "apiSettings": {
+        "baseUrl": "https://api.nuget.org/v3/registration5-gz-semver2",
+        "galleryUrl": "https://www.nuget.org/packages",
+        "timeout": 30,
+        "maxConcurrentRequests": 5,
+        "retryAttempts": 3,
+        "useCompression": true
+    },
+    "outputSettings": {
+        "defaultFormat": "console",
+        "includeTransitive": true,
+        "showDependencies": true,
+        "verboseLogging": true
+    },
+    "filterSettings": {
+        "excludePackages": [
+            "Microsoft.NET.Test.Sdk",
+            "coverlet.collector"
+        ],
+        "includePrerelease": true,
+        "minSeverity": "Low"
+    },
+    "reportSettings": {
+        "groupByFramework": true,
+        "sortByName": true,
+        "showOutdatedOnly": false,
+        "showVulnerableOnly": false,
+        "showDeprecatedOnly": false
+    }
 }

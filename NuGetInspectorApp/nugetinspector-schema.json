@@ -1,0 +1,164 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/edemerzel/nuget-inspector/blob/main/schemas/nugetinspector-schema.json",
+  "title": "NuGet Inspector Configuration",
+  "description": "Configuration file for NuGet Inspector application settings and preferences",
+  "type": "object",
+  "properties": {
+    "apiSettings": {
+      "type": "object",
+      "description": "Settings for NuGet API interactions",
+      "properties": {
+        "baseUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "Base URL for NuGet API operations",
+          "default": "https://api.nuget.org/v3/registration5-gz-semver2",
+          "examples": [
+            "https://api.nuget.org/v3/registration5-gz-semver2",
+            "https://api.nuget.org/v3/registration5-semver2",
+            "https://api.nuget.org/v3/registration5-semver1"
+          ]
+        },
+        "galleryUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "Base URL for NuGet Gallery links",
+          "default": "https://www.nuget.org/packages"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 300,
+          "description": "HTTP request timeout in seconds",
+          "default": 30
+        },
+        "maxConcurrentRequests": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Maximum number of concurrent HTTP requests",
+          "default": 5
+        },
+        "retryAttempts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Maximum number of retry attempts for failed requests",
+          "default": 3
+        },
+        "useCompression": {
+          "type": "boolean",
+          "description": "Whether to use compression for HTTP requests",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "outputSettings": {
+      "type": "object",
+      "description": "Settings for output formatting and display",
+      "properties": {
+        "defaultFormat": {
+          "type": "string",
+          "enum": [
+            "console",
+            "html",
+            "markdown",
+            "json"
+          ],
+          "description": "Default output format",
+          "default": "console"
+        },
+        "includeTransitive": {
+          "type": "boolean",
+          "description": "Whether to include transitive packages in reports",
+          "default": true
+        },
+        "showDependencies": {
+          "type": "boolean",
+          "description": "Whether to show package dependencies",
+          "default": true
+        },
+        "verboseLogging": {
+          "type": "boolean",
+          "description": "Enable verbose logging output",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "filterSettings": {
+      "type": "object",
+      "description": "Settings for filtering packages and results",
+      "properties": {
+        "excludePackages": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9._-]+$"
+          },
+          "description": "List of package IDs to exclude from analysis",
+          "uniqueItems": true,
+          "examples": [
+            [
+              "Microsoft.NET.Test.Sdk",
+              "coverlet.collector"
+            ]
+          ]
+        },
+        "includePrerelease": {
+          "type": "boolean",
+          "description": "Whether to include pre-release packages in analysis",
+          "default": false
+        },
+        "minSeverity": {
+          "type": "string",
+          "enum": [
+            "Low",
+            "Medium",
+            "High",
+            "Critical"
+          ],
+          "description": "Minimum vulnerability severity to report",
+          "default": "Low"
+        }
+      },
+      "additionalProperties": false
+    },
+    "reportSettings": {
+      "type": "object",
+      "description": "Settings for report generation and organization",
+      "properties": {
+        "groupByFramework": {
+          "type": "boolean",
+          "description": "Whether to group packages by target framework",
+          "default": true
+        },
+        "sortByName": {
+          "type": "boolean",
+          "description": "Whether to sort packages alphabetically by name",
+          "default": true
+        },
+        "showOutdatedOnly": {
+          "type": "boolean",
+          "description": "Show only outdated packages in reports",
+          "default": false
+        },
+        "showVulnerableOnly": {
+          "type": "boolean",
+          "description": "Show only vulnerable packages in reports",
+          "default": false
+        },
+        "showDeprecatedOnly": {
+          "type": "boolean",
+          "description": "Show only deprecated packages in reports",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true,
+  "required": []
+}
