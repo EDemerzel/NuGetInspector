@@ -13,13 +13,13 @@ NuGet Inspector helps you identify outdated, deprecated, and vulnerable packages
 - [Features](#-features)
 - [Quick Start](#-quick-start)
 - [Installation](#-installation)
-- [Usage](#-usage)
-- [Configuration](#-configuration)
+- [Usage](#%EF%B8%8F-usage)
+- [Configuration](#%EF%B8%8F-configuration)
 - [Sample Output](#-sample-output)
-- [Development](#-development)
+- [Development](#%EF%B8%8F-development)
 - [Contributing](#-contributing)
 - [Troubleshooting](#-troubleshooting)
-- [Roadmap](#-roadmap)
+- [Roadmap](#%EF%B8%8F-roadmap)
 
 ## ✨ Features
 
@@ -389,7 +389,7 @@ dotnet test --filter "ClassName~PackageAnalyzerTests"
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [contribution guidelines](CONTRIBUTING.md) for details.
+We welcome contributions! Please see our [contribution guidelines](#contribution-guidelines) below for details.
 
 ### Development Workflow
 
