@@ -9,7 +9,7 @@ namespace NuGetInspectorApp.Application;
 /// <summary>
 /// Provides the main application logic for analyzing NuGet packages in .NET solutions.
 /// </summary>
-/// 
+///
 /// <remarks>
 /// This class orchestrates the entire package analysis workflow, including:
 /// <list type="bullet">
@@ -81,7 +81,20 @@ public class NuGetAuditApplication
                 return 1;
             }
 
-            // Fetch all reports in parallel with enhanced error handling
+            // Add diagnostic check for basic dotnet functionality
+            _logger.LogDebug("[{OperationId}] Running diagnostic check for dotnet list command", operationId);
+            if (_dotNetService is DotNetService dotNetService)
+            {
+                var basicTest = await dotNetService.TestBasicDotnetListAsync(options.SolutionPath, cancellationToken);
+                if (!basicTest)
+                {
+                    _logger.LogError("[{OperationId}] Basic dotnet list command failed. Check .NET SDK installation and solution validity.", operationId);
+                    return 1;
+                }
+                _logger.LogDebug("[{OperationId}] Basic dotnet list command test passed", operationId);
+            }
+
+            // Continue with existing logic...
             _logger.LogDebug("[{OperationId}] Fetching package reports from dotnet CLI", operationId);
 
             var tasks = new[]
@@ -159,7 +172,7 @@ public class NuGetAuditApplication
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[{OperationId}] Error processing NuGet audit", operationId);
+            _logger.LogError(ex, "[{OperationId}] Unexpected error during NuGet audit: {Message}", operationId, ex.Message);
             return 1;
         }
     }

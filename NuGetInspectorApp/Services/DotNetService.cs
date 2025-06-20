@@ -84,40 +84,124 @@ namespace NuGetInspectorApp.Services
         /// higher-level GetPackageReportAsync method.
         /// </para>
         /// </remarks>
+        // In DotNetService.cs - enhance the RunDotnetListJSONAsync method
         private async Task<string?> RunDotnetListJSONAsync(string solution, string flag, CancellationToken cancellationToken)
         {
-            var psi = new ProcessStartInfo("dotnet",
-                $"list \"{solution}\" package {flag} --include-transitive --format json")
+            // Add comprehensive validation
+            if (string.IsNullOrWhiteSpace(solution))
             {
+                _logger.LogError("Solution path is null or empty");
+                return null;
+            }
+
+            if (!File.Exists(solution))
+            {
+                _logger.LogError("Solution file does not exist: {SolutionPath}", solution);
+                return null;
+            }
+
+            // Convert to absolute path
+            var absolutePath = Path.GetFullPath(solution);
+            _logger.LogDebug("Using absolute solution path: {AbsolutePath}", absolutePath);
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "dotnet",
+                Arguments = $"list \"{absolutePath}\" package {flag} --include-transitive --format json",
+                UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
+                WorkingDirectory = Path.GetDirectoryName(absolutePath) ?? Environment.CurrentDirectory
             };
+
+            _logger.LogDebug("Executing command: {FileName} {Arguments}", startInfo.FileName, startInfo.Arguments);
+            _logger.LogDebug("Working directory: {WorkingDirectory}", startInfo.WorkingDirectory);
 
             try
             {
-                using var proc = new Process { StartInfo = psi };
-                proc.Start();
+                using var process = new Process { StartInfo = startInfo };
+                process.Start();
 
-                var stdout = await proc.StandardOutput.ReadToEndAsync();
-                var stderr = await proc.StandardError.ReadToEndAsync();
+                var outputTask = process.StandardOutput.ReadToEndAsync();
+                var errorTask = process.StandardError.ReadToEndAsync();
 
-                await proc.WaitForExitAsync(cancellationToken);
+                await process.WaitForExitAsync(cancellationToken);
 
-                if (proc.ExitCode != 0)
+                var output = await outputTask;
+                var error = await errorTask;
+
+                if (process.ExitCode != 0)
                 {
                     _logger.LogError("dotnet list package {Flag} failed with exit code {ExitCode}: {Error}",
-                        flag, proc.ExitCode, stderr);
+                        flag, process.ExitCode, error);
+
+                    // Log additional diagnostic information
+                    if (error.Contains("MSBUILD"))
+                    {
+                        _logger.LogError("MSBuild error detected. Ensure .NET SDK is properly installed and solution can be restored.");
+                    }
+                    if (error.Contains("not found") || error.Contains("could not be found"))
+                    {
+                        _logger.LogError("File not found error. Check solution path and ensure all projects exist.");
+                    }
+
                     return null;
                 }
 
-                return stdout;
+                if (string.IsNullOrWhiteSpace(output))
+                {
+                    _logger.LogWarning("dotnet list package {Flag} returned empty output", flag);
+                    return null;
+                }
+
+                _logger.LogTrace("dotnet list package {Flag} completed successfully. Output length: {Length}", flag, output.Length);
+                return output;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to execute dotnet list package {Flag}", flag);
+                _logger.LogError(ex, "Exception occurred while executing dotnet list package {Flag}: {Message}", flag, ex.Message);
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// Tests if dotnet list command works without any flags - for diagnostic purposes.
+        /// </summary>
+        public async Task<bool> TestBasicDotnetListAsync(string solutionPath, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var absolutePath = Path.GetFullPath(solutionPath);
+
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "dotnet",
+                    Arguments = $"list \"{absolutePath}\" package --format json",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    WorkingDirectory = Path.GetDirectoryName(absolutePath) ?? Environment.CurrentDirectory
+                };
+
+                using var process = new Process { StartInfo = startInfo };
+                process.Start();
+
+                var output = await process.StandardOutput.ReadToEndAsync();
+                var error = await process.StandardError.ReadToEndAsync();
+
+                await process.WaitForExitAsync(cancellationToken);
+
+                _logger.LogInformation("Basic dotnet list test - Exit code: {ExitCode}, Output length: {OutputLength}, Error: {Error}",
+                    process.ExitCode, output?.Length ?? 0, error);
+
+                return process.ExitCode == 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to execute basic dotnet list test: {Message}", ex.Message);
+                return false;
             }
         }
     }

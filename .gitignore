@@ -1,5 +1,513 @@
-*/bin/**
-*/obj/**
-bin
-obj
+# ==============================================================================
+# .NET Build Outputs
+# ==============================================================================
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+
+# MSBuild temporary files
+*.tmp
+*.tmp_proj
+*_wpftmp.csproj
+*.binlog
+
+# ==============================================================================
+# Visual Studio / VS Code
+# ==============================================================================
+
+# Visual Studio cache/options directory
 .vs/
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+
+# Visual Studio auto generated files
+Generated\ Files/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Visual Studio profiler
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+# Visual Studio Trace Files
+*.e2e
+
+# ==============================================================================
+# .NET Core / .NET 5+
+# ==============================================================================
+
+project.lock.json
+project.fragment.lock.json
+
+# ==============================================================================
+# Testing & Code Coverage
+# ==============================================================================
+
+# MSTest test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# NUnit
+*.VisualState.xml
+TestResult.xml
+nunit-*.xml
+
+# Code coverage
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# AxoCover
+.axoCover/*
+!.axoCover/settings.json
+
+# Coverlet
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# OpenCover
+OpenCover/
+
+# ==============================================================================
+# Package Managers & Dependencies
+# ==============================================================================
+
+# NuGet
+*.nupkg
+*.snupkg
+*.nuspec.bak
+
+# npm (if any frontend tooling)
+node_modules/
+npm-debug.log
+.npm
+
+# Paket dependency manager
+.paket/paket.exe
+paket-files/
+
+# ==============================================================================
+# Development Tools & IDEs
+# ==============================================================================
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# StyleCop
+StyleCopReport.xml
+
+# Telerik JustMock
+*.jmconfig
+
+# TeamCity
+_TeamCity*
+
+# DotCover
+*.dotCover
+
+# NCrunch
+_NCrunch_*
+.*crunch*.local.xml
+nCrunchTemp_*
+
+# MightyMoose
+*.mm.*
+AutoTest.Net/
+
+# Tabs Studio
+*.tss
+
+# CodeRush
+.cr/
+
+# Local History for Visual Studio
+.localhistory/
+
+# Local History for Visual Studio Code
+.history/
+
+# ==============================================================================
+# Compiled Files & Libraries
+# ==============================================================================
+
+# Visual Studio compiled files
+*_i.c
+*_p.c
+*_h.h
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.log
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+# Visual C++ cache files
+ipch/
+*.aps
+*.ncb
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+
+# Dynamic Link Libraries
+*.dll
+*.exe
+*.pdb
+*.lib
+*.exp
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# ==============================================================================
+# Package & Publishing
+# ==============================================================================
+
+# Click-Once directory
+publish/
+
+# Publish Web Output
+*.[Pp]ublish.xml
+*.azurePubxml
+*.pubxml
+*.publishproj
+
+# Microsoft Fakes
+FakesAssemblies/
+
+# ==============================================================================
+# Database Files
+# ==============================================================================
+
+# SQL Server files
+*.mdf
+*.ldf
+*.ndf
+
+# LocalDB
+*.db
+*.db-shm
+*.db-wal
+
+# SQLite
+*.sqlite
+*.sqlite3
+
+# BeatPulse healthcheck temp database
+healthchecksdb
+
+# ==============================================================================
+# Operating System Files
+# ==============================================================================
+
+# Windows
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Windows Installer files
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+
+# ==============================================================================
+# Development Certificates & Security
+# ==============================================================================
+
+# Development certificates
+*.pfx
+*.p12
+dev-certs/
+*.key
+*.cer
+*.crt
+*.der
+
+# Including strong name files can present a security risk
+*.snk
+
+# ==============================================================================
+# Container & Deployment
+# ==============================================================================
+
+# Docker
+.dockerignore
+Dockerfile.debug
+docker-compose*.yml
+docker-compose*.yaml
+
+# Azure
+csx/
+*.build.csdef
+ecf/
+rcf/
+ASALocalRun/
+
+# Windows Store app package
+AppPackages/
+BundleArtifacts/
+Package.StoreAssociation.xml
+_pkginfo.txt
+*.appx
+*.appxbundle
+*.appxupload
+
+# ==============================================================================
+# Documentation & Backup Files
+# ==============================================================================
+
+# Backup & upgrade files
+_UpgradeReport_Files/
+Backup*/
+UpgradeLog*.XML
+UpgradeLog*.htm
+CConversionReportV3.xml
+MigrationBackup/
+
+# DocProject
+DocProject/buildhelp/
+DocProject/Help/*.HxT
+DocProject/Help/*.HxC
+DocProject/Help/*.hhc
+DocProject/Help/*.hhk
+DocProject/Help/*.hhp
+DocProject/Help/Html2
+DocProject/Help/html
+
+# GhostDoc
+*.GhostDoc.xml
+
+# ==============================================================================
+# Cache Files
+# ==============================================================================
+
+# Visual Studio cache files
+*.[Cc]ache
+!?*.[Cc]ache/
+
+# Benchmark Results
+BenchmarkDotNet.Artifacts/
+
+# Web workbench
+.sass-cache/
+
+# ==============================================================================
+# Specialized Development Tools
+# ==============================================================================
+
+# Python Tools for Visual Studio (PTVS)
+__pycache__/
+*.pyc
+
+# Node.js Tools for Visual Studio
+.ntvs_analysis.dat
+
+# Visual Studio 6 build log
+*.plg
+*.opt
+*.vbw
+
+# Visual Studio LightSwitch
+**/*.HTMLClient/GeneratedArtifacts
+**/*.DesktopClient/GeneratedArtifacts
+**/*.DesktopClient/ModelManifest.xml
+**/*.Server/GeneratedArtifacts
+**/*.Server/ModelManifest.xml
+_Pvt_Extensions
+
+# Business Intelligence projects
+*.rdl.data
+*.bim.layout
+*.bim_*.settings
+*.rptproj.rsuser
+*- [Bb]ackup.rdl
+*- [Bb]ackup ([0-9]).rdl
+*- [Bb]ackup ([0-9][0-9]).rdl
+
+# Silverlight/RIA
+Generated_Code/
+
+# ==============================================================================
+# Additional Tools
+# ==============================================================================
+
+# FAKE - F# Make
+.fake/
+
+# Cake
+tools/**
+!tools/packages.config
+
+# Installshield
+[Ee]xpress/
+
+# NVidia Nsight GPU debugger
+*.nvuser
+
+# MFractors (Xamarin productivity tool)
+.mfractor/
+
+# Ionide (F# VS Code tools)
+.ionide/
+
+# Fody
+FodyWeavers.xsd
+
+# ==============================================================================
+# Project-Specific: NuGet Inspector
+# ==============================================================================
+
+# Application output files
+*.log
+
+# Generated reports
+test-reports/
+package-analysis*.txt
+analysis-*.txt
+vulnerabilities.txt
+sprint-analysis.txt
+release-audit.txt
+
+# Temporary test files
+temp/
+tmp/
+test.sln
+*.test.*
+
+# Configuration overrides (keep templates)
+appsettings.Development.json
+appsettings.Production.json
+.nugetinspector.local
+
+# Sample/demo files (optional - remove if you want to track these)
+sample-reports/
+demo-output/
+
+# ==============================================================================
+# Archive & Compressed Files
+# ==============================================================================
+
+*.tar.gz
+*.zip
+*.7z
+*.rar
+*.tar
+*.gz
+tarballs/
+*.dmg
+*.app
+
+# ==============================================================================
+# Build Tools & Auto-Generated
+# ==============================================================================
+
+# Visual studio for Mac
+Makefile.in
+*.usertasks
+config.make
+config.status
+aclocal.m4
+install-sh
+autom4te.cache/
+
+# TFS 2012 Local Workspace
+$tf/
+
+# Guidance Automation Toolkit
+*.gpState
+
+# Others
+ClientBin/
+~$*
+*.dbmdl
+*.dbproj.schemaview
+*.jfm
+*.publishsettings
+orleans.codegen.cs
+
+# Exclude specific patterns but keep some files
+!**/.gitignore
+!.git/HEAD
+!.git/config
+!.git/packed-refs
+!.git/refs/heads/**

@@ -34,4 +34,9 @@ public interface IDotNetService
     /// <exception cref="ArgumentException">Thrown when <paramref name="solutionPath"/> or <paramref name="reportType"/> is null or empty.</exception>
     /// <exception cref="InvalidOperationException">Thrown when the dotnet CLI is not available or returns an unexpected format.</exception>
     Task<DotNetListReport?> GetPackageReportAsync(string solutionPath, string reportType, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Tests if basic dotnet list command functionality is working.
+    /// </summary>
+    Task<bool> TestBasicDotnetListAsync(string solutionPath, CancellationToken cancellationToken = default);
 }

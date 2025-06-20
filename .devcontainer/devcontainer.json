@@ -1,0 +1,31 @@
+{
+  "name": "NuGet Inspector Development",
+  "image": "mcr.microsoft.com/dotnet/sdk:9.0",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.vscode-dotnet-runtime",
+        "formulahendry.dotnet-test-explorer",
+        "ms-vscode.test-adapter-converter",
+        "streetsidesoftware.code-spell-checker",
+        "ms-vscode.vscode-json",
+        "redhat.vscode-yaml"
+      ],
+      "settings": {
+        "dotnet.defaultSolution": "NuGetInspectorApp.sln",
+        "files.exclude": {
+          "**/bin": true,
+          "**/obj": true,
+          "**/.vs": true
+        }
+      }
+    }
+  },
+  "postCreateCommand": "dotnet restore",
+  "remoteUser": "vscode"
+}
