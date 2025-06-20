@@ -1,4 +1,4 @@
-# 🔍 NuGet Inspector {#nuget-inspector}
+# 🔍 NuGet Inspector
 
 > A comprehensive command-line tool for analyzing NuGet packages in .NET solutions
 
@@ -10,18 +10,18 @@ NuGet Inspector helps you identify outdated, deprecated, and vulnerable packages
 
 ## 📋 Table of Contents
 
-- [Features](#features)
-- [Quick Start](#quick-start)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Configuration](#configuration)
-- [Sample Output](#sample-output)
-- [Development](#development)
-- [Contributing](#contributing)
-- [Troubleshooting](#troubleshooting)
-- [Roadmap](#roadmap)
+- [Features](#-features)
+- [Quick Start](#-quick-start)
+- [Installation](#-installation)
+- [Usage](#-usage)
+- [Configuration](#-configuration)
+- [Sample Output](#-sample-output)
+- [Development](#-development)
+- [Contributing](#-contributing)
+- [Troubleshooting](#-troubleshooting)
+- [Roadmap](#-roadmap)
 
-## ✨ Features {#features}
+## ✨ Features
 
 ### 🔍 **Comprehensive Package Analysis**
 
@@ -58,7 +58,7 @@ NuGet Inspector helps you identify outdated, deprecated, and vulnerable packages
 - **Environment Variables**: Runtime configuration overrides
 - **Cross-Platform**: Works on Windows, Linux, and macOS
 
-## 🚀 Quick Start {#quick-start}
+## 🚀 Quick Start
 
 ```bash
 # Clone and build
@@ -73,7 +73,7 @@ dotnet run -- path/to/your/solution.sln
 dotnet run -- solution.sln --only-vulnerable --only-deprecated
 ```
 
-## 📦 Installation {#installation}
+## 📦 Installation
 
 ### Prerequisites
 
@@ -111,7 +111,7 @@ docker run -v /path/to/solution:/app/workspace nuget-inspector \
         /workspace/YourSolution.sln --only-vulnerable --output /workspace/security-report.txt
 ```
 
-## 🎛️ Usage {#usage}
+## 🎛️ Usage
 
 ### Basic Commands
 
@@ -166,7 +166,7 @@ docker run -v $(pwd):/workspace nuget-inspector \
   /workspace/YourSolution.sln --only-vulnerable && echo "No vulnerabilities found"
 ```
 
-## ⚙️ Configuration {#configuration}
+## ⚙️ Configuration
 
 ### Configuration File Support
 
@@ -228,7 +228,7 @@ export HTTP_TIMEOUT_SECONDS="60"
 export DOTNET_ENVIRONMENT="Production"
 ```
 
-## 📊 Sample Output {#sample-output}
+## 📊 Sample Output
 
 ```shell
 === Project: MyWebApp.csproj ===
@@ -291,7 +291,7 @@ Transitive packages:
 | `Vulnerabilities: High` | Security issues found    | 🚨 **Update immediately** |
 | `Unknown`               | Version info unavailable | ℹ️ Manual verification    |
 
-## 🛠️ Development {#development}
+## 🛠️ Development
 
 ### Project Structure
 
@@ -387,7 +387,7 @@ dotnet test --filter "ClassName~PackageAnalyzerTests"
 - **Unit Tests**: Comprehensive coverage with multiple test categories
 - **Static Analysis**: Built-in analyzers and code quality rules
 
-## 🤝 Contributing {#contributing}
+## 🤝 Contributing
 
 We welcome contributions! Please see our [contribution guidelines](CONTRIBUTING.md) for details.
 
@@ -408,7 +408,7 @@ We welcome contributions! Please see our [contribution guidelines](CONTRIBUTING.
 - Update README for significant changes
 - Ensure all tests pass before submitting PR
 
-## 🔧 Troubleshooting {#troubleshooting}
+## 🔧 Troubleshooting
 
 ### Common Issues
 
@@ -462,7 +462,7 @@ This provides:
 - 📝 [Issues](https://github.com/EDemerzel/NuGetInspector/issues) - Bug reports and feature requests
 - 💬 [Discussions](https://github.com/EDemerzel/NuGetInspector/discussions) - Questions and community support
 
-## 🗺️ Roadmap {#roadmap}
+## 🗺️ Roadmap
 
 ### ✅ **Completed (v1.0)**
 
@@ -499,11 +499,11 @@ This provides:
 - [ ] **Dependency Graph Visualization** - Interactive dependency tree visualization
 - [ ] **Integration APIs** - Webhooks and external system integrations
 
-## 📄 License {#license}
+## 📄 License
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments {#acknowledgments}
+## 🙏 Acknowledgments
 
 - Built on top of the **NuGet v3 API** for comprehensive package metadata
 - Uses **Microsoft.Extensions** ecosystem for hosting and dependency injection
@@ -511,7 +511,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 - Leverages **System.CommandLine** for modern CLI experience
 - Community feedback and contributions from the .NET ecosystem
 
-## 📈 Project Stats {#project-stats}
+## 📈 Project Stats
 
 - **Language**: C# with .NET 9.0
 - **Architecture**: Modular service-oriented design
@@ -527,4 +527,4 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 [![GitHub stars](https://img.shields.io/github/stars/EDemerzel/NuGetInspector?style=social)](https://github.com/EDemerzel/NuGetInspector/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/EDemerzel/NuGetInspector?style=social)](https://github.com/EDemerzel/NuGetInspector/network)
 
-[⬆ Back to top](#nuget-inspector)
+[⬆ Back to top](#-nuget-inspector)
