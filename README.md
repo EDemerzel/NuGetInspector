@@ -295,29 +295,29 @@ Transitive packages:
 
 ### Project Structure
 
-```shell
+```text
 NuGetInspectorApp/
-├── 📁 Configuration/           # App settings and command-line options
-├── 📁 Formatters/             # Output formatters (Console, HTML*, JSON*)
-├── 📁 Models/                 # Data models with JSON serialization
-├── 📁 Services/               # Core business logic
-│   ├── NuGetApiService.cs     # NuGet API client with retry logic
-│   ├── DotNetService.cs       # .NET CLI command execution
-│   ├── PackageAnalyzer.cs     # Package merging and analysis
-│   └── Interfaces/            # Service contracts
-├── 📁 Application/            # Main application orchestrator
-├── 📄 Program.cs              # Entry point with System.CommandLine
-├── 📄 Dockerfile              # Container support
-└── 📄 .nugetinspector         # Default configuration
+├── 📁 Configuration/                   # App settings and command-line options
+├── 📁 Formatters/                      # Output formatters (Console, HTML*, JSON*)
+├── 📁 Models/                          # Data models with JSON serialization
+├── 📁 Services/                        # Core business logic
+│   ├── NuGetApiService.cs              # NuGet API client with retry logic
+│   ├── DotNetService.cs                # .NET CLI command execution
+│   ├── PackageAnalyzer.cs              # Package merging and analysis
+│   └── Interfaces/                     # Service contracts
+├── 📁 Application/                     # Main application orchestrator
+├── 📄 Program.cs                       # Entry point with System.CommandLine
+├── 📄 Dockerfile                       # Container support
+└── 📄 .nugetinspector                  # Default configuration
 
 NuGetInspectorApp.Tests/
-├── 📁 Services/               # Unit tests for core services
-├── 📁 Formatters/             # Output formatter tests
-└── 📄 NuGetAuditApplicationTests.cs # Integration tests
+├── 📁 Services/                        # Unit tests for core services
+├── 📁 Formatters/                      # Output formatter tests
+└── 📄 NuGetAuditApplicationTests.cs    # Integration tests
 
-📁 .build/                     # Build and deployment scripts
-📁 .github/workflows/          # CI/CD pipeline definitions
-📁 .devcontainer/              # Development container configuration
+📁 .build/                              # Build and deployment scripts
+📁 .github/workflows/                   # CI/CD pipeline definitions
+📁 .devcontainer/                       # Development container configuration
 ```
 
 ### Key Dependencies
@@ -461,7 +461,6 @@ This provides:
 
 - 📝 [Issues](https://github.com/EDemerzel/NuGetInspector/issues) - Bug reports and feature requests
 - 💬 [Discussions](https://github.com/EDemerzel/NuGetInspector/discussions) - Questions and community support
-- 📧 [Email](mailto:your.email@example.com) - Direct support
 
 ## 🗺️ Roadmap {#roadmap}
 
