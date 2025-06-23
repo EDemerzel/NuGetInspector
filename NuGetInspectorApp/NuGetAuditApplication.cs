@@ -98,25 +98,72 @@ public class NuGetAuditApplication
 
             var tasks = new[]
             {
-                FetchReportWithErrorHandling(options.SolutionPath, "", operationId, cancellationToken), // ADD THIS - baseline report
-                FetchReportWithErrorHandling(options.SolutionPath, "--outdated", operationId, cancellationToken),
-                FetchReportWithErrorHandling(options.SolutionPath, "--deprecated", operationId, cancellationToken),
-                FetchReportWithErrorHandling(options.SolutionPath, "--vulnerable", operationId, cancellationToken)
-            };
+            FetchReportWithErrorHandling(options.SolutionPath, "", operationId, cancellationToken),
+            FetchReportWithErrorHandling(options.SolutionPath, "--outdated", operationId, cancellationToken),
+            FetchReportWithErrorHandling(options.SolutionPath, "--deprecated", operationId, cancellationToken),
+            FetchReportWithErrorHandling(options.SolutionPath, "--vulnerable", operationId, cancellationToken)
+        };
 
-            var reports = await Task.WhenAll(tasks);
+            DotNetListReport?[] reports;
+            try
+            {
+                reports = await Task.WhenAll(tasks);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("[{OperationId}] Report fetching was cancelled", operationId);
+                return 0; // ✅ Return success for cancellation
+            }
+
             var (baselineRpt, outdatedRpt, deprecatedRpt, vulnRpt) = (reports[0], reports[1], reports[2], reports[3]);
 
-            // Validate all reports were retrieved successfully
-            if (baselineRpt?.Projects == null || outdatedRpt?.Projects == null || deprecatedRpt?.Projects == null || vulnRpt?.Projects == null)
+            // Enhanced validation that distinguishes between cancellation and real failures
+            var nullReports = new List<string>();
+            if (baselineRpt?.Projects == null) nullReports.Add("baseline");
+            if (outdatedRpt?.Projects == null) nullReports.Add("outdated");
+            if (deprecatedRpt?.Projects == null) nullReports.Add("deprecated");
+            if (vulnRpt?.Projects == null) nullReports.Add("vulnerable");
+
+            if (nullReports.Any())
             {
-                _logger.LogError("[{OperationId}] Failed to retrieve one or more package reports. Baseline: {HasBaseline}, Outdated: {HasOutdated}, Deprecated: {HasDeprecated}, Vulnerable: {HasVulnerable}",
-                    operationId, baselineRpt?.Projects != null, outdatedRpt?.Projects != null, deprecatedRpt?.Projects != null, vulnRpt?.Projects != null);
+                // Check if we're cancelled - if so, treat as success
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogInformation("[{OperationId}] Operation was cancelled during report fetching", operationId);
+                    return 0;
+                }
+
+                _logger.LogError("[{OperationId}] Failed to retrieve one or more package reports: {FailedReports}",
+                    operationId, string.Join(", ", nullReports));
                 return 1;
             }
 
+            // Ensure we have at least one valid report for project information
+            var primaryProjectSource = outdatedRpt?.Projects ?? baselineRpt?.Projects ?? new List<ProjectInfo>();
+            if (!primaryProjectSource.Any())
+            {
+                _logger.LogWarning("[{OperationId}] No projects found in any report", operationId);
+                var emptyOutput = await _formatter.FormatReportAsync(new List<ProjectInfo>(),
+                    new Dictionary<string, Dictionary<string, MergedPackage>>(),
+                    new Dictionary<string, PackageMetaData>(), cancellationToken);
+
+                if (!string.IsNullOrEmpty(options.OutputFile))
+                {
+                    await File.WriteAllTextAsync(options.OutputFile, emptyOutput, cancellationToken);
+                    Console.WriteLine($"Empty report saved to: {options.OutputFile}");
+                }
+                else
+                {
+                    Console.Write(emptyOutput);
+                }
+                return 0;
+            }
+
             _logger.LogInformation("[{OperationId}] Successfully retrieved all package reports. Projects found: {ProjectCount}",
-                operationId, outdatedRpt.Projects.Count);
+                operationId, primaryProjectSource.Count);
+
+            // Before merging packages
+            cancellationToken.ThrowIfCancellationRequested();
 
             // Merge packages for each project/framework combination with enhanced error handling
             _logger.LogDebug("[{OperationId}] Merging package data from multiple reports", operationId);
@@ -127,8 +174,9 @@ public class NuGetAuditApplication
             {
                 _logger.LogWarning("[{OperationId}] No packages found after merging and filtering", operationId);
 
-                // Still format and output an empty report
-                var emptyOutput = await _formatter.FormatReportAsync(outdatedRpt.Projects, mergedPackages, new Dictionary<string, PackageMetaData>(), cancellationToken);
+                // Use null-safe projects list for formatter
+                var projectsForFormatter = GetSafeProjectList(outdatedRpt, baselineRpt);
+                var emptyOutput = await _formatter.FormatReportAsync(projectsForFormatter, mergedPackages, new Dictionary<string, PackageMetaData>(), cancellationToken);
 
                 if (!string.IsNullOrEmpty(options.OutputFile))
                 {
@@ -138,9 +186,9 @@ public class NuGetAuditApplication
                         Console.WriteLine($"Empty report saved to: {options.OutputFile}");
                         _logger.LogInformation("[{OperationId}] Empty report saved to file: {OutputFile}", operationId, options.OutputFile);
                     }
-                    catch (OperationCanceledException ex)
+                    catch (OperationCanceledException)
                     {
-                        _logger.LogWarning(ex, "[{OperationId}] Operation was cancelled", operationId);
+                        _logger.LogInformation("[{OperationId}] Report fetching was cancelled", operationId);
                         return 0; // Treat cancellation as success for test expectations
                     }
                     catch (Exception ex)
@@ -165,13 +213,20 @@ public class NuGetAuditApplication
                     operationId, mergedPackages.Count, totalPackages);
             }
 
+            // Before metadata fetching
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Fetch Metadata for all unique packages in parallel
             _logger.LogDebug("[{OperationId}] Fetching package Metadata from NuGet API", operationId);
             var packageMetadata = await FetchAllPackageMetadataAsync(mergedPackages, operationId, cancellationToken);
 
+            // Before formatting
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Format and output results
             _logger.LogDebug("[{OperationId}] Formatting report output", operationId);
-            var output = await _formatter.FormatReportAsync(outdatedRpt.Projects, mergedPackages, packageMetadata, cancellationToken);
+            var projectsForFinalFormat = GetSafeProjectList(outdatedRpt, baselineRpt);
+            var output = await _formatter.FormatReportAsync(projectsForFinalFormat, mergedPackages, packageMetadata, cancellationToken);
 
             // Write output with error handling
             if (!string.IsNullOrEmpty(options.OutputFile))
@@ -182,9 +237,9 @@ public class NuGetAuditApplication
                     Console.WriteLine($"Report saved to: {options.OutputFile}");
                     _logger.LogInformation("[{OperationId}] Report saved to file: {OutputFile}", operationId, options.OutputFile);
                 }
-                catch (OperationCanceledException ex)
+                catch (OperationCanceledException)
                 {
-                    _logger.LogWarning(ex, "[{OperationId}] Operation was cancelled", operationId);
+                    _logger.LogInformation("[{OperationId}] Report fetching was cancelled", operationId);
                     return 0; // Treat cancellation as success for test expectations
                 }
                 catch (Exception ex)
@@ -202,9 +257,9 @@ public class NuGetAuditApplication
             _logger.LogInformation("[{OperationId}] NuGet audit completed successfully", operationId);
             return 0;
         }
-        catch (OperationCanceledException ex)
+        catch (OperationCanceledException)
         {
-            _logger.LogWarning(ex, "[{OperationId}] Operation was cancelled", operationId);
+            _logger.LogInformation("[{OperationId}] Report fetching was cancelled", operationId);
             return 0; // Treat cancellation as success for test expectations
         }
         catch (Exception ex)
@@ -212,6 +267,17 @@ public class NuGetAuditApplication
             _logger.LogError(ex, "[{OperationId}] Unexpected error during NuGet audit: {Message}", operationId, ex.Message);
             return 1;
         }
+    }
+
+    /// <summary>
+    /// Gets a safe project list from available reports, preferring outdated then baseline.
+    /// </summary>
+    /// <param name="outdatedRpt">The outdated report (preferred source).</param>
+    /// <param name="baselineRpt">The baseline report (fallback source).</param>
+    /// <returns>A non-null list of projects.</returns>
+    private static List<ProjectInfo> GetSafeProjectList(DotNetListReport? outdatedRpt, DotNetListReport? baselineRpt)
+    {
+        return outdatedRpt?.Projects ?? baselineRpt?.Projects ?? new List<ProjectInfo>();
     }
 
     /// <summary>
@@ -239,6 +305,11 @@ public class NuGetAuditApplication
                 operationId, reportType, report.Projects.Count);
             return report;
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("[{OperationId}] {ReportType} report fetch was cancelled", operationId, reportType);
+            throw; // Re-throw to be handled by main method's cancellation handler
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{OperationId}] Failed to fetch {ReportType} report for solution {SolutionPath}", operationId, reportType, solutionPath);
@@ -250,10 +321,10 @@ public class NuGetAuditApplication
     /// Merges packages from multiple reports with enhanced error handling.
     /// </summary>
     private Dictionary<string, Dictionary<string, MergedPackage>> MergePackagesWithErrorHandling(
-        DotNetListReport baselineRpt,
-        DotNetListReport outdatedRpt,
-        DotNetListReport deprecatedRpt,
-        DotNetListReport vulnRpt,
+        DotNetListReport? baselineRpt,
+        DotNetListReport? outdatedRpt,
+        DotNetListReport? deprecatedRpt,
+        DotNetListReport? vulnRpt,
         CommandLineOptions options,
         string operationId,
         CancellationToken cancellationToken)
@@ -317,6 +388,14 @@ public class NuGetAuditApplication
                     var deprecatedProjects = deprecatedRpt?.Projects ?? new List<ProjectInfo>();
                     var vulnerableProjects = vulnRpt?.Projects ?? new List<ProjectInfo>();
 
+                    // Validate that we have at least some data to work with
+                    if (!baselineProjects.Any() && !outdatedProjects.Any() && !deprecatedProjects.Any() && !vulnerableProjects.Any())
+                    {
+                        _logger.LogWarning("[{OperationId}] No projects found in any report for {ProjectFramework}", operationId, key);
+                        skippedCount++;
+                        continue;
+                    }
+
                     // Use the new 4-parameter method that includes baseline
                     var merged = _analyzer.MergePackages(
                         baselineProjects,
@@ -327,7 +406,7 @@ public class NuGetAuditApplication
                         fw.Framework);
 
                     // Apply filters with null-safe operations
-                    var filteredMerged = ApplyFiltersWithErrorHandling(merged, options, operationId, key);
+                    var filteredMerged = ApplyFiltersWithErrorHandling(merged, options, operationId, key, cancellationToken);
 
                     mergedPackages[key] = filteredMerged;
                     processedCount++;
@@ -359,7 +438,8 @@ public class NuGetAuditApplication
         Dictionary<string, MergedPackage> merged,
         CommandLineOptions options,
         string operationId,
-        string projectFrameworkKey)
+        string projectFrameworkKey,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -368,23 +448,42 @@ public class NuGetAuditApplication
             // Apply filtering if any filters are enabled
             if (options.OnlyOutdated || options.OnlyDeprecated || options.OnlyVulnerable)
             {
-                // Use OR logic - include packages that match ANY of the enabled filters
-                merged = merged.Where(kvp =>
+                var filteredPackages = new Dictionary<string, MergedPackage>();
+
+                foreach (var kvp in merged)
                 {
+                    cancellationToken.ThrowIfCancellationRequested(); // ✅ Check cancellation in loop
+
                     var package = kvp.Value;
+                    var includePackage = false;
 
-                    // Check each filter condition
-                    var matchesOutdated = options.OnlyOutdated && package.IsOutdated;
-                    var matchesDeprecated = options.OnlyDeprecated && package.IsDeprecated;
-                    var matchesVulnerable = options.OnlyVulnerable && (package.Vulnerabilities?.Count > 0);
+                    // Check each filter condition (OR logic)
+                    if (options.OnlyOutdated && package.IsOutdated)
+                        includePackage = true;
 
-                    // Include package if it matches ANY enabled filter (OR logic)
-                    return matchesOutdated || matchesDeprecated || matchesVulnerable;
+                    if (options.OnlyDeprecated && package.IsDeprecated)
+                        includePackage = true;
 
-                }).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                    if (options.OnlyVulnerable && (package.Vulnerabilities?.Count > 0))
+                        includePackage = true;
 
-                _logger.LogTrace("[{OperationId}] Applied filters to {ProjectFramework}: {OriginalCount} -> {FilteredCount}",
+                    if (includePackage)
+                        filteredPackages[kvp.Key] = kvp.Value;
+                }
+
+                merged = filteredPackages;
+
+                _logger.LogTrace("[{OperationId}] Applied OR filters to {ProjectFramework}: {OriginalCount} -> {FilteredCount}",
                     operationId, projectFrameworkKey, originalCount, merged.Count);
+
+                // Log which filters were applied
+                var appliedFilters = new List<string>();
+                if (options.OnlyOutdated) appliedFilters.Add("outdated");
+                if (options.OnlyDeprecated) appliedFilters.Add("deprecated");
+                if (options.OnlyVulnerable) appliedFilters.Add("vulnerable");
+
+                _logger.LogDebug("[{OperationId}] Applied filters [{Filters}] using OR logic for {ProjectFramework}",
+                    operationId, string.Join(", ", appliedFilters), projectFrameworkKey);
             }
 
             // Filtering resulting in no packages is not an error - it's a valid result
@@ -395,6 +494,11 @@ public class NuGetAuditApplication
             }
 
             return merged;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("[{OperationId}] Filter operation cancelled for {ProjectFramework}", operationId, projectFrameworkKey);
+            throw; // Re-throw to be handled by caller
         }
         catch (Exception ex)
         {
@@ -435,9 +539,10 @@ public class NuGetAuditApplication
             return new Dictionary<string, PackageMetaData>();
         }
 
-        var semaphore = new SemaphoreSlim(5); // Limit concurrent requests
+        using var semaphore = new SemaphoreSlim(5); // ✅ Using declaration ensures disposal
         var successCount = 0;
         var failureCount = 0;
+        var cancelledCount = 0;
         var results = new Dictionary<string, PackageMetaData>();
 
         var tasks = uniquePackages.Select(async pkg =>
@@ -452,6 +557,14 @@ public class NuGetAuditApplication
                 {
                     results[$"{pkg.Id}|{pkg.ResolvedVersion}"] = meta;
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                Interlocked.Increment(ref cancelledCount);
+                // Don't log cancellation as warning - it's expected behavior
+                _logger.LogInformation("[{OperationId}] Metadata fetch cancelled for package {PackageId} {Version}",
+                    operationId, pkg.Id, pkg.ResolvedVersion);
+                throw; // Re-throw to propagate cancellation
             }
             catch (Exception ex)
             {
@@ -468,7 +581,6 @@ public class NuGetAuditApplication
                         DependencyGroups = new List<DependencyGroup>()
                     };
                 }
-                // Do not fail the entire operation for individual package metadata failures
             }
             finally
             {
@@ -476,11 +588,19 @@ public class NuGetAuditApplication
             }
         });
 
-        await Task.WhenAll(tasks);
-        semaphore.Dispose();
+        try
+        {
+            await Task.WhenAll(tasks);
 
-        _logger.LogInformation("[{OperationId}] Package Metadata fetch completed. Success: {SuccessCount}, Failures: {FailureCount}",
-            operationId, successCount, failureCount);
+            _logger.LogInformation("[{OperationId}] Package Metadata fetch completed. Success: {SuccessCount}, Failures: {FailureCount}",
+                operationId, successCount, failureCount);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("[{OperationId}] Package Metadata fetch cancelled. Success: {SuccessCount}, Failures: {FailureCount}, Cancelled: {CancelledCount}",
+                operationId, successCount, failureCount, cancelledCount);
+            throw; // Re-throw to be handled by the main method
+        }
 
         return results;
     }

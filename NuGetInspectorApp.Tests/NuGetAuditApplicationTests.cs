@@ -123,24 +123,24 @@ public class NuGetAuditApplicationTests
         VerifyErrorLogged("Failed to retrieve one or more package reports");
     }
 
-[Test]
-public async Task RunAsync_DotNetServiceThrowsException_ReturnsFailureAndLogsError()
-{
-    // Arrange
-    var options = new CommandLineOptions { SolutionPath = "test.sln", OutputFormat = "console" };
-    var exceptionMessage = "DotNetService failed";
+    [Test]
+    public async Task RunAsync_DotNetServiceThrowsException_ReturnsFailureAndLogsError()
+    {
+        // Arrange
+        var options = new CommandLineOptions { SolutionPath = "test.sln", OutputFormat = "console" };
+        var exceptionMessage = "DotNetService failed";
 
-    _mockDotNetService.Setup(x => x.GetPackageReportAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-        .ThrowsAsync(new InvalidOperationException(exceptionMessage));
+        _mockDotNetService.Setup(x => x.GetPackageReportAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException(exceptionMessage));
 
-    // Act
-    var result = await _application.RunAsync(options, CancellationToken.None);
+        // Act
+        var result = await _application.RunAsync(options, CancellationToken.None);
 
-    // Assert
-    result.Should().Be(1);
-    // Update to match the actual error message being logged
-    VerifyErrorLogged("Failed to retrieve one or more package reports");
-}
+        // Assert
+        result.Should().Be(1);
+        // Update to match the actual error message being logged
+        VerifyErrorLogged("Failed to retrieve one or more package reports");
+    }
 
     [Test]
     public async Task RunAsync_WithEmptyMergedPackages_LogsWarning()
@@ -206,26 +206,64 @@ public async Task RunAsync_DotNetServiceThrowsException_ReturnsFailureAndLogsErr
 
         var packagesForFramework = capturedMergedPackages![$"{_testProjectPath}|{_testFramework}"];
 
-        // Verify filtering logic
-        if (onlyOutdated)
-            packagesForFramework.Values.Should().AllSatisfy(p =>
-                p.IsOutdated.Should().BeTrue("when 'onlyOutdated', all remaining packages should be outdated"));
+        // Apply the expected filtering logic manually to validate the test (OR logic)
+        var expectedPackages = mergedPackagesInput[$"{_testProjectPath}|{_testFramework}"].Values.Where(p =>
+        {
+            // No filters = include all packages
+            if (!onlyOutdated && !onlyDeprecated && !onlyVulnerable)
+                return true;
 
-        if (onlyDeprecated)
-            packagesForFramework.Values.Should().AllSatisfy(p =>
-                p.IsDeprecated.Should().BeTrue("when 'onlyDeprecated', all remaining packages should be deprecated"));
+            // OR logic - include if package matches ANY enabled filter
+            var includePackage = false;
 
-        if (onlyVulnerable)
-            packagesForFramework.Values.Should().AllSatisfy(p =>
-                HasVulnerabilities(p).Should().BeTrue("when 'onlyVulnerable', all remaining packages should have vulnerabilities"));
+            if (onlyOutdated && p.IsOutdated)
+                includePackage = true;
 
-        // Verify that appropriate packages are included
-        if (onlyOutdated && packagesForFramework.Any())
-            packagesForFramework.Values.Should().Contain(p => p.IsOutdated);
-        if (onlyDeprecated && packagesForFramework.Any())
-            packagesForFramework.Values.Should().Contain(p => p.IsDeprecated);
-        if (onlyVulnerable && packagesForFramework.Any())
-            packagesForFramework.Values.Where(HasVulnerabilities).Should().NotBeEmpty("there should be vulnerable packages when filtering for vulnerabilities");
+            if (onlyDeprecated && p.IsDeprecated)
+                includePackage = true;
+
+            if (onlyVulnerable && HasVulnerabilities(p))
+                includePackage = true;
+
+            return includePackage;
+        }).ToList();
+
+        // Verify that the actual application filtering matches our expected filtering
+        if (onlyOutdated || onlyDeprecated || onlyVulnerable)
+        {
+            // If any filters are applied, verify the results match OR logic
+            packagesForFramework.Count.Should().BeLessOrEqualTo(mergedPackagesInput[$"{_testProjectPath}|{_testFramework}"].Count,
+                "filtering should reduce or maintain the number of packages");
+
+            // Verify that remaining packages match at least one filter criteria (OR logic)
+            if (packagesForFramework.Any())
+            {
+                packagesForFramework.Values.Should().AllSatisfy(p =>
+                {
+                    var matchesFilter = false;
+
+                    if (onlyOutdated && p.IsOutdated) matchesFilter = true;
+                    if (onlyDeprecated && p.IsDeprecated) matchesFilter = true;
+                    if (onlyVulnerable && HasVulnerabilities(p)) matchesFilter = true;
+
+                    matchesFilter.Should().BeTrue(
+                        $"Package {p.Id} should match at least one enabled filter (outdated={onlyOutdated}, deprecated={onlyDeprecated}, vulnerable={onlyVulnerable})");
+                });
+            }
+
+            // Verify expected packages are present
+            var expectedPackageIds = expectedPackages.Select(p => p.Id).ToHashSet();
+            var actualPackageIds = packagesForFramework.Values.Select(p => p.Id).ToHashSet();
+
+            actualPackageIds.Should().BeEquivalentTo(expectedPackageIds,
+                $"the filtered packages should match expected OR logic results for filters: outdated={onlyOutdated}, deprecated={onlyDeprecated}, vulnerable={onlyVulnerable}");
+        }
+        else
+        {
+            // No filters applied, should have all packages
+            packagesForFramework.Count.Should().Be(mergedPackagesInput[$"{_testProjectPath}|{_testFramework}"].Count,
+                "when no filters are applied, all packages should be present");
+        }
     }
 
     [Test]
@@ -303,22 +341,37 @@ public async Task RunAsync_DotNetServiceThrowsException_ReturnsFailureAndLogsErr
         var options = new CommandLineOptions { SolutionPath = "test.sln" };
         using var cts = new CancellationTokenSource();
 
+        // Setup the first call to succeed, then cancel on subsequent calls
+        var callCount = 0;
         _mockDotNetService.Setup(x => x.GetPackageReportAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(async (string s, string r, CancellationToken ct) =>
             {
-                await Task.Delay(100, ct);
+                callCount++;
+                if (callCount == 1)
+                {
+                    // First call (baseline report) succeeds
+                    return new DotNetListReport { Projects = new List<ProjectInfo>() };
+                }
+
+                // Subsequent calls get cancelled
+                await Task.Delay(50, ct);
                 ct.ThrowIfCancellationRequested();
                 return new DotNetListReport { Projects = new List<ProjectInfo>() };
             });
 
-        cts.Cancel(); // Cancel immediately
+        // Cancel after a short delay to allow the first call to complete
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(25);
+            cts.Cancel();
+        });
 
         // Act
         var result = await _application.RunAsync(options, cts.Token);
 
         // Assert
         result.Should().Be(0); // Should return success (0) for cancellation
-        VerifyWarningLogged("Operation was cancelled");
+        VerifyInformationLogged("Report fetching was cancelled"); // ✅ Changed to Information level
     }
 
     [Test]
@@ -658,45 +711,43 @@ public async Task RunAsync_DotNetServiceThrowsException_ReturnsFailureAndLogsErr
     {
         var packages = new Dictionary<string, MergedPackage>
         {
+            // Test single conditions
             ["OutdatedOnly"] = new MergedPackage
             {
                 Id = "OutdatedOnly",
-                ResolvedVersion = "1.0.0",
                 IsOutdated = true,
-                LatestVersion = "1.1.0",
-                Vulnerabilities = new List<VulnerabilityInfo>(),
-                DeprecationReasons = new List<string>()
+                IsDeprecated = false,
+                Vulnerabilities = new List<VulnerabilityInfo>()
             },
             ["DeprecatedOnly"] = new MergedPackage
             {
                 Id = "DeprecatedOnly",
-                ResolvedVersion = "2.0.0",
+                IsOutdated = false,
                 IsDeprecated = true,
-                Vulnerabilities = new List<VulnerabilityInfo>(),
-                DeprecationReasons = new List<string> { "Deprecated package" }
+                Vulnerabilities = new List<VulnerabilityInfo>()
             },
             ["VulnerableOnly"] = new MergedPackage
             {
                 Id = "VulnerableOnly",
-                ResolvedVersion = "3.0.0",
-                Vulnerabilities = new List<VulnerabilityInfo> { new VulnerabilityInfo { Severity = "High" } },
-                DeprecationReasons = new List<string>()
+                IsOutdated = false,
+                IsDeprecated = false,
+                Vulnerabilities = new List<VulnerabilityInfo> { new VulnerabilityInfo { Severity = "High" } }
             },
+            // Test combination (should be included by OR logic)
             ["OutdatedAndVulnerable"] = new MergedPackage
             {
                 Id = "OutdatedAndVulnerable",
-                ResolvedVersion = "4.0.0",
                 IsOutdated = true,
-                LatestVersion = "4.1.0",
-                Vulnerabilities = new List<VulnerabilityInfo> { new VulnerabilityInfo { Severity = "Medium" } },
-                DeprecationReasons = new List<string>()
+                IsDeprecated = false,
+                Vulnerabilities = new List<VulnerabilityInfo> { new VulnerabilityInfo { Severity = "Medium" } }
             },
+            // Test no issues (should be excluded when filters are applied)
             ["CurrentPackage"] = new MergedPackage
             {
                 Id = "CurrentPackage",
-                ResolvedVersion = "5.0.0",
-                Vulnerabilities = new List<VulnerabilityInfo>(),
-                DeprecationReasons = new List<string>()
+                IsOutdated = false,
+                IsDeprecated = false,
+                Vulnerabilities = new List<VulnerabilityInfo>()
             }
         };
         return new Dictionary<string, Dictionary<string, MergedPackage>>
@@ -807,6 +858,18 @@ public async Task RunAsync_DotNetServiceThrowsException_ReturnsFailureAndLogsErr
         _mockLogger.Verify(
             x => x.Log(
                 LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains(expectedMessageSubstring)),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.AtLeastOnce);
+    }
+
+    private void VerifyInformationLogged(string expectedMessageSubstring)
+    {
+        _mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Information,
                 It.IsAny<EventId>(),
                 It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains(expectedMessageSubstring)),
                 It.IsAny<Exception>(),
