@@ -1,245 +1,256 @@
 name: CI/CD Pipeline
 
 on:
-    push:
-        branches: [master, develop]
-    pull_request:
-        branches: [master]
-    release:
-        types: [published]
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master ]
+  release:
+    types: [ published ]
 
 # Required for Trivy SARIF upload to GitHub Code Scanning
 permissions:
-    contents: read
-    security-events: write
-    checks: write
+  contents: read
+  security-events: write
+  checks: write
 
 env:
-    DOTNET_VERSION: "9.0.x"
-    BUILD_CONFIGURATION: "Release"
-    APPLICATION_NAME: "NuGetInspectorApp"
+  DOTNET_VERSION: '9.0.x'
+  BUILD_CONFIGURATION: 'Release'
+  APPLICATION_NAME: 'NuGetInspectorApp'
 
 jobs:
-    test:
-        runs-on: ubuntu-latest
-        name: Test .NET ${{ matrix.dotnet-version }}
-        strategy:
-            matrix:
-                dotnet-version: ["9.0.x"]
+  test:
+    runs-on: ubuntu-latest
+    name: Test .NET ${{ matrix.dotnet-version }}
+    strategy:
+      matrix:
+        dotnet-version: ['9.0.x']
 
-        steps:
-            - uses: actions/checkout@v4
+    steps:
+    - uses: actions/checkout@v4
 
-            - name: Setup .NET
-              uses: actions/setup-dotnet@v4
-              with:
-                  dotnet-version: ${{ matrix.dotnet-version }}
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ matrix.dotnet-version }}
 
-            - name: Restore dependencies
-              run: dotnet restore
+    - name: Restore dependencies
+      run: dotnet restore
 
-            - name: Build
-              run: dotnet build --no-restore --configuration ${{ env.BUILD_CONFIGURATION }}
+    - name: Build
+      run: dotnet build --no-restore --configuration ${{ env.BUILD_CONFIGURATION }}
 
-            - name: Test
-              run: dotnet test --no-build --configuration ${{ env.BUILD_CONFIGURATION }} --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./TestResults --logger:"trx"
+    - name: Test
+      run: dotnet test --no-build --configuration ${{ env.BUILD_CONFIGURATION }} --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./TestResults --logger:"trx"
 
-            - name: Generate Test Report
-              uses: dorny/test-reporter@v1
-              if: success() || failure()
-              with:
-                  name: .NET Tests
-                  path: TestResults/*.trx
-                  reporter: dotnet-trx
+    - name: Generate Test Report
+      uses: dorny/test-reporter@v1
+      if: success() || failure()
+      with:
+        name: .NET Tests
+        path: TestResults/*.trx
+        reporter: dotnet-trx
 
-            - name: Upload coverage reports to Codecov
-              uses: codecov/codecov-action@v3
-              with:
-                  directory: ./TestResults
-                  flags: unittests
-                  name: codecov-nuget-inspector
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        directory: ./TestResults
+        flags: unittests
+        name: codecov-nuget-inspector
 
-    build:
-        needs: test
-        runs-on: ${{ matrix.os }}
-        strategy:
-            matrix:
-                os: [ubuntu-latest, windows-latest, macos-latest]
-                include:
-                    - os: ubuntu-latest
-                      runtime: linux-x64
-                    - os: windows-latest
-                      runtime: win-x64
-                    - os: macos-latest
-                      runtime: osx-x64
+  build:
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            runtime: linux-x64
+          - os: windows-latest
+            runtime: win-x64
+          - os: macos-latest
+            runtime: osx-x64
 
-        steps:
-            - uses: actions/checkout@v4
+    steps:
+    - uses: actions/checkout@v4
 
-            - name: Setup .NET
-              uses: actions/setup-dotnet@v4
-              with:
-                  dotnet-version: ${{ env.DOTNET_VERSION }}
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
 
-            - name: Restore dependencies
-              run: dotnet restore
+    - name: Restore dependencies
+      run: dotnet restore
 
-            - name: Build Release
-              run: dotnet build --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
+    - name: Build Release
+      run: dotnet build --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
 
-            - name: Publish Self-Contained Executable
-              shell: bash
-              run: |
-                  dotnet publish ${{ env.APPLICATION_NAME }}/${{ env.APPLICATION_NAME }}.csproj \
-                    --configuration ${{ env.BUILD_CONFIGURATION }} \
-                    --runtime ${{ matrix.runtime }} \
-                    --self-contained true \
-                    --output ./publish/${{ matrix.runtime }} \
-                    /p:PublishSingleFile=true \
-                    /p:PublishTrimmed=true
+    - name: Publish Self-Contained Executable (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        dotnet publish ${{ env.APPLICATION_NAME }}/${{ env.APPLICATION_NAME }}.csproj `
+          --configuration ${{ env.BUILD_CONFIGURATION }} `
+          --runtime ${{ matrix.runtime }} `
+          --self-contained true `
+          --output ./publish/${{ matrix.runtime }} `
+          -p:PublishSingleFile=true `
+          -p:PublishTrimmed=true
 
-            - name: Create Application Archive (Linux/macOS)
-              if: runner.os != 'Windows'
-              run: |
-                  cd ./publish/${{ matrix.runtime }}
-                  tar -czf ../../${{ env.APPLICATION_NAME }}-${{ matrix.runtime }}.tar.gz *
+    - name: Publish Self-Contained Executable (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: |
+        dotnet publish ${{ env.APPLICATION_NAME }}/${{ env.APPLICATION_NAME }}.csproj \
+          --configuration ${{ env.BUILD_CONFIGURATION }} \
+          --runtime ${{ matrix.runtime }} \
+          --self-contained true \
+          --output ./publish/${{ matrix.runtime }} \
+          -p:PublishSingleFile=true \
+          -p:PublishTrimmed=true
 
-            - name: Create Application Archive (Windows)
-              if: runner.os == 'Windows'
-              run: |
-                  cd ./publish/${{ matrix.runtime }}
-                  Compress-Archive -Path * -DestinationPath ../../${{ env.APPLICATION_NAME }}-${{ matrix.runtime }}.zip
+    - name: Create Application Archive (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: |
+        cd ./publish/${{ matrix.runtime }}
+        tar -czf ../../${{ env.APPLICATION_NAME }}-${{ matrix.runtime }}.tar.gz *
 
-            - name: Upload Application Artifacts
-              uses: actions/upload-artifact@v4
-              with:
-                  name: ${{ env.APPLICATION_NAME }}-${{ matrix.runtime }}
-                  path: |
-                      ${{ env.APPLICATION_NAME }}-${{ matrix.runtime }}.tar.gz
-                      ${{ env.APPLICATION_NAME }}-${{ matrix.runtime }}.zip
-                  retention-days: 30
+    - name: Create Application Archive (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        cd ./publish/${{ matrix.runtime }}
+        Compress-Archive -Path * -DestinationPath ../../${{ env.APPLICATION_NAME }}-${{ matrix.runtime }}.zip
 
-    docker:
-        needs: test
-        runs-on: ubuntu-latest
-        if: github.ref == 'refs/heads/master' || github.event_name == 'release'
+    - name: Upload Application Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.APPLICATION_NAME }}-${{ matrix.runtime }}
+        path: |
+          ${{ env.APPLICATION_NAME }}-${{ matrix.runtime }}.tar.gz
+          ${{ env.APPLICATION_NAME }}-${{ matrix.runtime }}.zip
+        retention-days: 30
 
-        steps:
-            - uses: actions/checkout@v4
+  docker:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' || github.event_name == 'release'
 
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
+    steps:
+    - uses: actions/checkout@v4
 
-            - name: Log in to Docker Hub
-              if: github.event_name == 'release'
-              uses: docker/login-action@v3
-              with:
-                  username: ${{ secrets.DOCKER_USERNAME }}
-                  password: ${{ secrets.DOCKER_PASSWORD }}
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
-            - name: Extract metadata
-              id: meta
-              uses: docker/metadata-action@v5
-              with:
-                  images: your-dockerhub-username/nuget-inspector
-                  tags: |
-                      type=ref,event=branch
-                      type=ref,event=pr
-                      type=semver,pattern={{version}}
-                      type=semver,pattern={{major}}.{{minor}}
+    - name: Log in to Docker Hub
+      if: github.event_name == 'release'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
 
-            - name: Build Docker image
-              uses: docker/build-push-action@v5
-              with:
-                  context: .
-                  file: ${{ env.APPLICATION_NAME }}/Dockerfile
-                  push: false
-                  tags: ${{ steps.meta.outputs.tags }}
-                  labels: ${{ steps.meta.outputs.labels }}
-                  load: true
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: your-dockerhub-username/nuget-inspector
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
 
-            - name: Push Docker image (Release only)
-              if: github.event_name == 'release'
-              run: |
-                  echo "${{ steps.meta.outputs.tags }}" | while read tag; do
-                    docker push "$tag"
-                  done
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ${{ env.APPLICATION_NAME }}/Dockerfile
+        push: false
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        load: true
 
-    integration-test:
-        needs: build
-        runs-on: ubuntu-latest
-        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop'
+    - name: Push Docker image (Release only)
+      if: github.event_name == 'release'
+      run: |
+        echo "${{ steps.meta.outputs.tags }}" | while read tag; do
+          docker push "$tag"
+        done
 
-        steps:
-            - uses: actions/checkout@v4
+  integration-test:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop'
 
-            - name: Setup .NET
-              uses: actions/setup-dotnet@v4
-              with:
-                  dotnet-version: ${{ env.DOTNET_VERSION }}
+    steps:
+    - uses: actions/checkout@v4
 
-            - name: Create Test Solution
-              run: |
-                  mkdir -p ./test-solution
-                  cd ./test-solution
-                  dotnet new sln -n TestSolution
-                  dotnet new console -n TestApp
-                  dotnet sln add TestApp/TestApp.csproj
-                  cd TestApp
-                  dotnet add package Newtonsoft.Json --version 13.0.1
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
 
-            - name: Download Application Artifact
-              uses: actions/download-artifact@v4
-              with:
-                  name: ${{ env.APPLICATION_NAME }}-linux-x64
+    - name: Create Test Solution
+      run: |
+        mkdir -p ./test-solution
+        cd ./test-solution
+        dotnet new sln -n TestSolution
+        dotnet new console -n TestApp
+        dotnet sln add TestApp/TestApp.csproj
+        cd TestApp
+        dotnet add package Newtonsoft.Json --version 13.0.1
 
-            - name: Extract and Test Application
-              run: |
-                  tar -xzf ${{ env.APPLICATION_NAME }}-linux-x64.tar.gz
-                  chmod +x ./${{ env.APPLICATION_NAME }}
-                  ./${{ env.APPLICATION_NAME }} ./test-solution/TestSolution.sln --verbose
+    - name: Download Application Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ env.APPLICATION_NAME }}-linux-x64
 
-    release:
-        needs: [test, build, docker]
-        runs-on: ubuntu-latest
-        if: github.event_name == 'release'
+    - name: Extract and Test Application
+      run: |
+        tar -xzf ${{ env.APPLICATION_NAME }}-linux-x64.tar.gz
+        chmod +x ./${{ env.APPLICATION_NAME }}
+        ./${{ env.APPLICATION_NAME }} ./test-solution/TestSolution.sln --verbose
 
-        steps:
-            - name: Download All Artifacts
-              uses: actions/download-artifact@v4
+  release:
+    needs: [test, build, docker]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
 
-            - name: Upload Release Assets
-              uses: softprops/action-gh-release@v1
-              with:
-                  files: |
-                      **/${{ env.APPLICATION_NAME }}-*.tar.gz
-                      **/${{ env.APPLICATION_NAME }}-*.zip
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+    - name: Download All Artifacts
+      uses: actions/download-artifact@v4
 
-    security-scan:
-        runs-on: ubuntu-latest
-        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
+    - name: Upload Release Assets
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          **/${{ env.APPLICATION_NAME }}-*.tar.gz
+          **/${{ env.APPLICATION_NAME }}-*.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-        steps:
-            - name: 📦 Checkout Repository
-              uses: actions/checkout@v4
+  security-scan:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
 
-            - name: 🔍 Run Trivy Vulnerability Scanner
-              id: trivy
-              uses: aquasecurity/trivy-action@master
-              with:
-                  scan-type: "fs"
-                  scan-ref: "."
-                  format: "sarif"
-                  output: "trivy-results.sarif"
+    steps:
+    - name: 📦 Checkout Repository
+      uses: actions/checkout@v4
 
-            - name: 📤 Upload Trivy Scan Results (if not from fork)
-              if: always() && github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-              uses: github/codeql-action/upload-sarif@v3
-              with:
-                  sarif_file: "trivy-results.sarif"
+    - name: 🔍 Run Trivy Vulnerability Scanner
+      id: trivy
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
 
-            - name: ℹ️ Skip SARIF Upload for Fork PRs
-              if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
-              run: echo "⚠️ SARIF upload skipped for forked PR (read-only token)."
+    - name: 📤 Upload Trivy Scan Results (if not from fork)
+      if: always() && github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: ℹ️ Skip SARIF Upload for Fork PRs
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+      run: echo "⚠️ SARIF upload skipped for forked PR (read-only token)."
