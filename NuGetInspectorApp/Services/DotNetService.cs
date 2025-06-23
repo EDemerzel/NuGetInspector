@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using NuGetInspectorApp.Models;
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 
 namespace NuGetInspectorApp.Services;
@@ -24,7 +25,7 @@ public class DotNetService : IDotNetService
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="logger"/> is null.</exception>
     public DotNetService(ILogger<DotNetService> logger)
     {
-        _logger = logger;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
@@ -50,17 +51,20 @@ public class DotNetService : IDotNetService
     public async Task<DotNetListReport?> GetPackageReportAsync(string solutionPath, string reportType, CancellationToken cancellationToken = default)
     {
         var json = await RunDotnetListJSONAsync(solutionPath, reportType, cancellationToken);
-        if (json == null)
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            _logger.LogWarning($"dotnet list package {reportType} returned empty output");
             return null;
+        }
 
         try
         {
-            var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            return JsonSerializer.Deserialize<DotNetListReport>(json, opts);
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            return JsonSerializer.Deserialize<DotNetListReport>(json, options);
         }
-        catch (JsonException ex)
+        catch (JsonException)
         {
-            _logger.LogError(ex, "Failed to deserialize dotnet list output for {ReportType}", reportType);
+            _logger.LogError($"Failed to deserialize dotnet list output for {reportType}");
             return null;
         }
     }
@@ -68,7 +72,7 @@ public class DotNetService : IDotNetService
     /// <summary>
     /// Executes the dotnet list package command and returns the raw JSON output.
     /// </summary>
-    /// <param name="solution">The path to the solution file to analyze.</param>
+    /// <param name="solutionPath">The path to the solution file to analyze.</param>
     /// <param name="flag">The command flag to specify the type of package report (e.g., "--outdated", "--deprecated").</param>
     /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
     /// <returns>
@@ -85,84 +89,101 @@ public class DotNetService : IDotNetService
     /// </para>
     /// </remarks>
     // In DotNetService.cs - enhance the RunDotnetListJSONAsync method
-    private async Task<string?> RunDotnetListJSONAsync(string solution, string flag, CancellationToken cancellationToken)
+    private async Task<string?> RunDotnetListJSONAsync(string solutionPath, string flag, CancellationToken cancellationToken = default)
     {
-        // Add comprehensive validation
-        if (string.IsNullOrWhiteSpace(solution))
+        if (string.IsNullOrWhiteSpace(solutionPath))
         {
             _logger.LogError("Solution path is null or empty");
             return null;
         }
 
-        if (!File.Exists(solution))
+        if (!Path.IsPathRooted(solutionPath))
         {
-            _logger.LogError("Solution file does not exist: {SolutionPath}", solution);
+            solutionPath = Path.GetFullPath(solutionPath);
+            _logger.LogDebug($"Using absolute solution path: {solutionPath}");
+        }
+
+        if (!File.Exists(solutionPath))
+        {
+            _logger.LogError($"Solution file does not exist: {solutionPath}");
             return null;
         }
 
-        // Convert to absolute path
-        var absolutePath = Path.GetFullPath(solution);
-        _logger.LogDebug("Using absolute solution path: {AbsolutePath}", absolutePath);
+        // Always include --include-transitive flag
+        var arguments = string.IsNullOrWhiteSpace(flag)
+            ? $"list \"{solutionPath}\" package --include-transitive --format json"
+            : $"list \"{solutionPath}\" package {flag} --include-transitive --format json";
 
-        var startInfo = new ProcessStartInfo
+        var psi = new ProcessStartInfo
         {
             FileName = "dotnet",
-            Arguments = $"list \"{absolutePath}\" package {flag} --include-transitive --format json",
-            UseShellExecute = false,
+            Arguments = arguments,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            CreateNoWindow = true,
-            WorkingDirectory = Path.GetDirectoryName(absolutePath) ?? Environment.CurrentDirectory
+            UseShellExecute = false,
+            CreateNoWindow = true
         };
 
-        _logger.LogDebug("Executing command: {FileName} {Arguments}", startInfo.FileName, startInfo.Arguments);
-        _logger.LogDebug("Working directory: {WorkingDirectory}", startInfo.WorkingDirectory);
+        _logger.LogDebug("Executing dotnet command: {Command} {Arguments}", psi.FileName, psi.Arguments);
+
+        using var process = new Process { StartInfo = psi };
+        var outputBuilder = new StringBuilder();
+        var errorBuilder = new StringBuilder();
+
+        process.OutputDataReceived += (s, e) => { if (e.Data != null) outputBuilder.AppendLine(e.Data); };
+        process.ErrorDataReceived += (s, e) => { if (e.Data != null) errorBuilder.AppendLine(e.Data); };
+
+        process.Start();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
 
         try
         {
-            using var process = new Process { StartInfo = startInfo };
-            process.Start();
-
-            var outputTask = process.StandardOutput.ReadToEndAsync();
-            var errorTask = process.StandardError.ReadToEndAsync();
-
             await process.WaitForExitAsync(cancellationToken);
-
-            var output = await outputTask;
-            var error = await errorTask;
-
-            if (process.ExitCode != 0)
-            {
-                _logger.LogError("dotnet list package {Flag} failed with exit code {ExitCode}: {Error}",
-                    flag, process.ExitCode, error);
-
-                // Log additional diagnostic information
-                if (error.Contains("MSBUILD"))
-                {
-                    _logger.LogError("MSBuild error detected. Ensure .NET SDK is properly installed and solution can be restored.");
-                }
-                if (error.Contains("not found") || error.Contains("could not be found"))
-                {
-                    _logger.LogError("File not found error. Check solution path and ensure all projects exist.");
-                }
-
-                return null;
-            }
-
-            if (string.IsNullOrWhiteSpace(output))
-            {
-                _logger.LogWarning("dotnet list package {Flag} returned empty output", flag);
-                return null;
-            }
-
-            _logger.LogTrace("dotnet list package {Flag} completed successfully. Output length: {Length}", flag, output.Length);
-            return output;
         }
-        catch (Exception ex)
+        catch (OperationCanceledException)
         {
-            _logger.LogError(ex, "Exception occurred while executing dotnet list package {Flag}: {Message}", flag, ex.Message);
+            _logger.LogWarning("dotnet list package command was cancelled.");
             return null;
         }
+
+        var output = outputBuilder.ToString();
+        var error = errorBuilder.ToString();
+
+        if (process.ExitCode != 0)
+        {
+            _logger.LogError("dotnet list package command failed with exit code {ExitCode}. Error: {Error}",
+                process.ExitCode, error);
+
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                if (error.Contains("MSBUILD", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogError("MSBuild error detected. Ensure .NET SDK is properly installed and solution can be restored.");
+                    return null;
+                }
+                if (error.Contains("could not be found", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogError("File not found error. Check solution path and ensure all projects exist.");
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(output))
+        {
+            _logger.LogWarning($"dotnet list package {flag} returned empty output");
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(flag)) // This is the baseline report
+        {
+            var transitiveCount = output.Split("transitivePackages").Length - 1;
+            _logger.LogDebug("Baseline report contains {TransitiveCount} 'transitivePackages' sections", transitiveCount);
+        }
+
+        return output;
     }
 
     /// <summary>
@@ -172,29 +193,46 @@ public class DotNetService : IDotNetService
     {
         try
         {
-            var absolutePath = Path.GetFullPath(solutionPath);
-
-            var startInfo = new ProcessStartInfo
+            var psi = new ProcessStartInfo
             {
                 FileName = "dotnet",
-                Arguments = $"list \"{absolutePath}\" package --format json",
-                UseShellExecute = false,
+                Arguments = $"list \"{solutionPath}\" package --include-transitive",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                CreateNoWindow = true,
-                WorkingDirectory = Path.GetDirectoryName(absolutePath) ?? Environment.CurrentDirectory
+                UseShellExecute = false,
+                CreateNoWindow = true
             };
 
-            using var process = new Process { StartInfo = startInfo };
+            using var process = new Process { StartInfo = psi };
+            var outputBuilder = new StringBuilder();
+            var errorBuilder = new StringBuilder();
+
+            process.OutputDataReceived += (s, e) => { if (e.Data != null) outputBuilder.AppendLine(e.Data); };
+            process.ErrorDataReceived += (s, e) => { if (e.Data != null) errorBuilder.AppendLine(e.Data); };
+
             process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
 
-            var output = await process.StandardOutput.ReadToEndAsync();
-            var error = await process.StandardError.ReadToEndAsync();
+            try
+            {
+                await process.WaitForExitAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("dotnet list package command was cancelled.");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to execute basic dotnet list test: {Message}", ex.Message);
+                return false;
+            }
 
-            await process.WaitForExitAsync(cancellationToken);
+            var output = outputBuilder.ToString();
+            var error = errorBuilder.ToString();
 
-            _logger.LogInformation("Basic dotnet list test - Exit code: {ExitCode}, Output length: {OutputLength}, Error: {Error}",
-                process.ExitCode, output?.Length ?? 0, error);
+            _logger.LogInformation($"Basic dotnet list test - Exit code: {process.ExitCode}");
 
             return process.ExitCode == 0;
         }

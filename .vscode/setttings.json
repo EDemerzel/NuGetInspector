@@ -4,7 +4,7 @@
       "fileMatch": [
         ".nugetinspector"
       ],
-      "url": "./nugetinspector-schema.json"
+      "url": "./schemas/nugetinspector-schema.json"
     }
   ]
 }

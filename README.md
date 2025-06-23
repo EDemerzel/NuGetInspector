@@ -225,10 +225,39 @@ The project includes scripts for managing NuGet package sources:
 
 ```bash
 # Override configuration at runtime
-export NUGET_API_BASE_URL="https://api.nuget.org/v3/registration5-gz-semver2"
-export MAX_CONCURRENT_REQUESTS="8"
-export HTTP_TIMEOUT_SECONDS="60"
 export DOTNET_ENVIRONMENT="Production"
+
+# Core API Settings
+export NUGET_API_BASE_URL="https://api.nuget.org/v3/registration5-gz-semver2"
+export NUGET_GALLERY_BASE_URL="https://www.nuget.org/packages"
+export NUGET_API_MAX_CONCURRENT_REQUESTS="8"
+export HTTP_TIMEOUT_SECONDS="60"
+
+# Retry Configuration
+export MAX_RETRY_ATTEMPTS="5"
+export RETRY_DELAY_SECONDS="2.0"
+export RETRY_BACKOFF_FACTOR="2.0"
+export MAX_RETRY_DELAY_SECONDS="30"
+export USE_RETRY_JITTER="true"
+
+# Output Settings
+export VERBOSE_LOGGING="true"
+export DEFAULT_OUTPUT_FORMAT="console"
+export INCLUDE_TRANSITIVE="true"
+export SHOW_DEPENDENCIES="true"
+
+# Filter Settings
+export INCLUDE_PRERELEASE="false"
+export MIN_SEVERITY="medium"
+export EXCLUDE_PACKAGES="Microsoft.NET.Test.Sdk,coverlet.collector"
+
+# Report Settings
+export USE_COMPRESSION="true"
+export GROUP_BY_FRAMEWORK="false"
+export SORT_BY_NAME="false"
+export SHOW_OUTDATED_ONLY="false"
+export SHOW_VULNERABLE_ONLY="false"
+export SHOW_DEPRECATED_ONLY="false"
 ```
 
 ## 📊 Sample Output

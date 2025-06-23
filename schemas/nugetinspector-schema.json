@@ -47,6 +47,32 @@
           "description": "Maximum number of retry attempts for failed requests",
           "default": 3
         },
+        "retryDelaySeconds": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 60.0,
+          "description": "Delay in seconds between retry attempts",
+          "default": 2.0
+        },
+        "retryBackoffFactor": {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 5.0,
+          "description": "Exponential backoff factor for retry delays",
+          "default": 2.0
+        },
+        "maxRetryDelaySeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300,
+          "description": "Maximum retry delay in seconds",
+          "default": 30
+        },
+        "useRetryJitter": {
+          "type": "boolean",
+          "description": "Whether to use jitter in retry delays",
+          "default": true
+        },
         "useCompression": {
           "type": "boolean",
           "description": "Whether to use compression for HTTP requests",
@@ -115,13 +141,13 @@
         "minSeverity": {
           "type": "string",
           "enum": [
-            "Low",
-            "Medium",
-            "High",
-            "Critical"
+            "low",
+            "medium",
+            "high",
+            "critical"
           ],
-          "description": "Minimum vulnerability severity to report",
-          "default": "Low"
+          "description": "Minimum vulnerability severity to report (case-insensitive)",
+          "default": "low"
         }
       },
       "additionalProperties": false
@@ -133,12 +159,12 @@
         "groupByFramework": {
           "type": "boolean",
           "description": "Whether to group packages by target framework",
-          "default": true
+          "default": false
         },
         "sortByName": {
           "type": "boolean",
           "description": "Whether to sort packages alphabetically by name",
-          "default": true
+          "default": false
         },
         "showOutdatedOnly": {
           "type": "boolean",

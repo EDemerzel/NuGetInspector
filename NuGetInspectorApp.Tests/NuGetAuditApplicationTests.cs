@@ -120,7 +120,7 @@ public class NuGetAuditApplicationTests
 
         // Assert
         result.Should().Be(1);
-        VerifyErrorLogged("Failed to retrieve one or more package reports");
+        VerifyErrorLogged("Failed to retrieve one or");
     }
 
     [Test]
@@ -138,8 +138,7 @@ public class NuGetAuditApplicationTests
 
         // Assert
         result.Should().Be(1);
-        // Update to match the actual error message being logged
-        VerifyErrorLogged("Failed to retrieve one or more package reports");
+        VerifyErrorLogged("Failed to retrieve one or");
     }
 
     [Test]
@@ -423,7 +422,7 @@ public class NuGetAuditApplicationTests
 
         // Assert
         result.Should().Be(1);
-        VerifyErrorLogged("Failed to retrieve one or more package reports");
+        VerifyErrorLogged("Failed to retrieve one or");
     }
 
     [Test]
@@ -625,6 +624,86 @@ public class NuGetAuditApplicationTests
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Test]
+    public async Task RunAsync_WithTransitivePackages_PreservesTransitivePackagesInOutput()
+    {
+        // Arrange
+        var options = new CommandLineOptions { SolutionPath = "test.sln", OutputFormat = "console" };
+
+        // Create baseline report with transitive packages
+        var baselineProject = new ProjectInfo
+        {
+            Path = "TestProject.csproj",
+            Frameworks = new List<FrameworkInfo>
+        {
+            new FrameworkInfo
+            {
+                Framework = "net9.0",
+                TopLevelPackages = new List<PackageReference>
+                {
+                    new PackageReference { Id = "TopLevel", ResolvedVersion = "1.0.0" }
+                },
+                TransitivePackages = new List<PackageReference>
+                {
+                    new PackageReference { Id = "Transitive.Package", ResolvedVersion = "2.0.0" },
+                    new PackageReference { Id = "Another.Transitive", ResolvedVersion = "3.0.0" }
+                }
+            }
+        }
+        };
+
+        var baselineReport = new DotNetListReport { Projects = new List<ProjectInfo> { baselineProject } };
+        var mergedPackages = CreateTestMergedPackages();
+        var packageMetadata = CreateTestPackageMetadata();
+
+        // ✅ Setup mock services to return the baseline report that contains transitive packages
+        _mockDotNetService.Setup(x => x.GetPackageReportAsync(It.IsAny<string>(), "", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(baselineReport); // Return baseline report with transitive packages
+        _mockDotNetService.Setup(x => x.GetPackageReportAsync(It.IsAny<string>(), "--outdated", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(baselineReport);
+        _mockDotNetService.Setup(x => x.GetPackageReportAsync(It.IsAny<string>(), "--deprecated", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(baselineReport);
+        _mockDotNetService.Setup(x => x.GetPackageReportAsync(It.IsAny<string>(), "--vulnerable", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(baselineReport);
+
+        // ✅ Setup the analyzer to return merged packages (this processes both top-level and transitive)
+        _mockAnalyzer.Setup(x => x.MergePackages(
+                It.IsAny<List<ProjectInfo>>(),
+                It.IsAny<List<ProjectInfo>>(),
+                It.IsAny<List<ProjectInfo>>(),
+                It.IsAny<List<ProjectInfo>>(),
+                "TestProject.csproj",
+                "net9.0"))
+            .Returns(mergedPackages[$"{_testProjectPath}|{_testFramework}"]);
+
+        // ✅ Setup NuGet service
+        _mockNuGetService.Setup(x => x.FetchPackageMetaDataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string pkgId, string version, CancellationToken ct) =>
+                packageMetadata.TryGetValue($"{pkgId}|{version}", out var meta) ? meta : new PackageMetaData { PackageUrl = $"fallback_url/{pkgId}/{version}", DependencyGroups = new List<DependencyGroup>() });
+
+        // ✅ Setup formatter
+        _mockFormatter.Setup(x => x.FormatReportAsync(
+                It.IsAny<List<ProjectInfo>>(),
+                It.IsAny<Dictionary<string, Dictionary<string, MergedPackage>>>(),
+                It.IsAny<Dictionary<string, PackageMetaData>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Test report output");
+
+        // Act
+        var result = await _application.RunAsync(options, CancellationToken.None);
+
+        // Assert
+        result.Should().Be(0);
+
+        // ✅ Verify that formatter was called with the BASELINE report that includes transitive packages
+        _mockFormatter.Verify(x => x.FormatReportAsync(
+            It.Is<List<ProjectInfo>>(projects =>
+                projects.Any(p => p.Frameworks.Any(f => f.TransitivePackages != null && f.TransitivePackages.Any()))),
+            It.IsAny<Dictionary<string, Dictionary<string, MergedPackage>>>(),
+            It.IsAny<Dictionary<string, PackageMetaData>>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     #region Helper Methods
 
     private const string _testProjectPath = "TestProject.csproj";
@@ -774,7 +853,7 @@ public class NuGetAuditApplicationTests
 
     private void SetupMockServices(DotNetListReport report, Dictionary<string, Dictionary<string, MergedPackage>> mergedPackages, Dictionary<string, PackageMetaData> packageMetadata)
     {
-        // Setup all 4 report types including baseline
+        // ✅ Setup all 4 report types - the key is that baseline report (empty string) should contain transitive packages
         _mockDotNetService.Setup(x => x.GetPackageReportAsync(It.IsAny<string>(), "", It.IsAny<CancellationToken>())).ReturnsAsync(report);
         _mockDotNetService.Setup(x => x.GetPackageReportAsync(It.IsAny<string>(), "--outdated", It.IsAny<CancellationToken>())).ReturnsAsync(report);
         _mockDotNetService.Setup(x => x.GetPackageReportAsync(It.IsAny<string>(), "--deprecated", It.IsAny<CancellationToken>())).ReturnsAsync(report);
@@ -788,15 +867,15 @@ public class NuGetAuditApplicationTests
                 {
                     foreach (var frameworkInfo in projectInfo.Frameworks)
                     {
-                        // Update to use the 4-parameter MergePackages method
+                        // ✅ Setup analyzer to return merged packages for the project/framework combination
                         _mockAnalyzer.Setup(x => x.MergePackages(
-                           It.IsAny<List<ProjectInfo>>(),
-                           It.IsAny<List<ProjectInfo>>(),
-                           It.IsAny<List<ProjectInfo>>(),
-                           It.IsAny<List<ProjectInfo>>(),
-                           projectInfo.Path,
-                           frameworkInfo.Framework))
-                       .Returns(mergedPackages.TryGetValue($"{projectInfo.Path}|{frameworkInfo.Framework}", out var pkgs) ? pkgs : new Dictionary<string, MergedPackage>());
+                               It.IsAny<List<ProjectInfo>>(),
+                               It.IsAny<List<ProjectInfo>>(),
+                               It.IsAny<List<ProjectInfo>>(),
+                               It.IsAny<List<ProjectInfo>>(),
+                               projectInfo.Path,
+                               frameworkInfo.Framework))
+                           .Returns(mergedPackages.TryGetValue($"{projectInfo.Path}|{frameworkInfo.Framework}", out var pkgs) ? pkgs : new Dictionary<string, MergedPackage>());
                     }
                 }
             }

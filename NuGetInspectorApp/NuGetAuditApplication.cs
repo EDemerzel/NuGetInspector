@@ -133,7 +133,7 @@ public class NuGetAuditApplication
                     return 0;
                 }
 
-                _logger.LogError("[{OperationId}] Failed to retrieve one or more package reports: {FailedReports}",
+                _logger.LogError("[{OperationId}] Failed to retrieve one ormore package reports: {FailedReports}",
                     operationId, string.Join(", ", nullReports));
                 return 1;
             }
@@ -226,7 +226,13 @@ public class NuGetAuditApplication
             // Format and output results
             _logger.LogDebug("[{OperationId}] Formatting report output", operationId);
             var projectsForFinalFormat = GetSafeProjectList(outdatedRpt, baselineRpt);
-            var output = await _formatter.FormatReportAsync(projectsForFinalFormat, mergedPackages, packageMetadata, cancellationToken);
+
+            // ✅ Pass the baseline report that contains transitive packages
+            var output = await _formatter.FormatReportAsync(
+                baselineRpt?.Projects ?? projectsForFinalFormat, // Use baseline report specifically
+                mergedPackages,
+                packageMetadata,
+                cancellationToken);
 
             // Write output with error handling
             if (!string.IsNullOrEmpty(options.OutputFile))
@@ -278,6 +284,21 @@ public class NuGetAuditApplication
     private static List<ProjectInfo> GetSafeProjectList(DotNetListReport? outdatedRpt, DotNetListReport? baselineRpt)
     {
         return outdatedRpt?.Projects ?? baselineRpt?.Projects ?? new List<ProjectInfo>();
+    }
+
+    /// <summary>
+    /// Gets a safe project list from available reports, always preferring baseline for transitive packages.
+    /// </summary>
+    /// <param name="baselineRpt">The baseline report (preferred source).</param>
+    /// <param name="outdatedRpt">The outdated report (fallback source).</param>
+    /// <returns>A non-null list of projects.</returns>
+    private static List<ProjectInfo> GetSafeProjectListWithTransitive(
+        DotNetListReport? baselineRpt,
+        DotNetListReport? outdatedRpt)
+    {
+        // Always prefer baseline report for transitive packages
+        // Fall back to outdated only if baseline is completely unavailable
+        return baselineRpt?.Projects ?? outdatedRpt?.Projects ?? new List<ProjectInfo>();
     }
 
     /// <summary>

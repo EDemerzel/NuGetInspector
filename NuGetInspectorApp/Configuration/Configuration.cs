@@ -9,58 +9,113 @@ namespace NuGetInspectorApp.Configuration;
 public class AppSettings
 {
     /// <summary>
-    /// Base URL for NuGet API operations
-    /// 1. `https://api.nuget.org/v3/registration5-semver1/` - Basic registration
-    /// 2. `https://api.nuget.org/v3/registration5-gz-semver2/` - **Current working** (gzip + SemVer2)
-    /// 3. `https://api.nuget.org/v3/registration5-semver2/` - SemVer2 without compression
+    /// Gets or sets the base URL for NuGet API operations.
     /// </summary>
+    /// <value>
+    /// A string containing the base URL for NuGet API requests. Default is the compressed SemVer 2.0 endpoint.
+    /// </value>
+    /// <remarks>
+    /// <para>The NuGet API supports multiple endpoint versions with different capabilities:</para>
+    /// <list type="number">
+    /// <item><description><c>https://api.nuget.org/v3/registration5-semver1/</c> - Basic registration (SemVer 1.0)</description></item>
+    /// <item><description><c>https://api.nuget.org/v3/registration5-gz-semver2/</c> - <strong>Current working</strong> (compressed, SemVer 2.0)</description></item>
+    /// <item><description><c>https://api.nuget.org/v3/registration5-semver2/</c> - SemVer 2.0 without compression</description></item>
+    /// </list>
+    /// <para>The compressed endpoint (gz-semver2) provides better performance for large-scale operations and is the recommended default.</para>
+    /// <para>This setting can be overridden using the environment variable:</para>
+    /// <c>NUGET_API_BASE_URL</c>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// var settings = new AppSettings
+    /// {
+    ///     NuGetApiBaseUrl = "https://api.nuget.org/v3/registration5-gz-semver2"
+    /// };
+    /// // Or in configuration file:
+    /// // "apiSettings": { "baseUrl": "https://api.nuget.org/v3/registration5-gz-semver2" }
+    /// // Or via environment variable:
+    /// // export NUGET_API_BASE_URL="https://api.nuget.org/v3/registration5-gz-semver2"
+    /// </code>
+    /// </example>
     public string NuGetApiBaseUrl { get; set; } = "https://api.nuget.org/v3/registration5-gz-semver2";
 
     /// <summary>
     /// Base URL for NuGet Gallery links.
     /// </summary>
+    /// <remarks>
+    /// <para>This setting can be overridden using the environment variable:</para>
+    /// <c>NUGET_GALLERY_BASE_URL</c>
+    /// </remarks>
     public string NuGetGalleryBaseUrl { get; set; } = "https://www.nuget.org/packages";
 
     /// <summary>
     /// Gets or sets the maximum number of concurrent HTTP requests allowed.
     /// </summary>
     /// <value>The maximum concurrent requests. Default is 5.</value>
+    /// <remarks>
+    /// <para>This setting can be overridden using the environment variable:</para>
+    /// <c>NUGET_API_MAX_CONCURRENT_REQUESTS</c>
+    /// </remarks>
     public int MaxConcurrentRequests { get; set; } = 5;
 
     /// <summary>
     /// Gets or sets the HTTP request timeout in seconds.
     /// </summary>
     /// <value>The HTTP timeout in seconds. Default is 30.</value>
+    /// <remarks>
+    /// <para>This setting can be overridden using the environment variable:</para>
+    /// <c>HTTP_TIMEOUT_SECONDS</c>
+    /// </remarks>
     public int HttpTimeoutSeconds { get; set; } = 30;
 
     /// <summary>
     /// Gets or sets the maximum number of retry attempts for failed HTTP requests.
     /// </summary>
     /// <value>The maximum retry attempts. Default is 3.</value>
+    /// <remarks>
+    /// <para>This setting can be overridden using the environment variable:</para>
+    /// <c>MAX_RETRY_ATTEMPTS</c>
+    /// </remarks>
     public int MaxRetryAttempts { get; set; } = 3;
 
     /// <summary>
     /// Gets or sets the delay in seconds between retry attempts for failed HTTP requests.
     /// </summary>
     /// <value>The retry delay in seconds. Default is 2.</value>
+    /// <remarks>
+    /// <para>This setting can be overridden using the environment variable:</para>
+    /// <c>RETRY_DELAY_SECONDS</c>
+    /// </remarks>
     public double RetryDelaySeconds { get; set; } = 2.0;
 
     /// <summary>
     /// Gets or sets the exponential backoff factor for retry delays.
     /// </summary>
     /// <value>The backoff multiplier applied to retry delays. Default is 2.0.</value>
+    /// <remarks>
+    /// <para>This setting can be overridden using the environment variable:</para>
+    /// <c>RETRY_BACKOFF_FACTOR</c>
+    /// </remarks>
     public double RetryBackoffFactor { get; set; } = 2.0;
 
     /// <summary>
     /// Gets or sets the maximum retry delay in seconds.
     /// </summary>
     /// <value>The maximum delay between retries. Default is 30 seconds.</value>
+    /// <remarks>
+    /// <para>This setting can be overridden using the environment variable:</para>
+    /// <c>MAX_RETRY_DELAY_SECONDS</c>
+    /// </remarks>
     public int MaxRetryDelaySeconds { get; set; } = 30;
 
     /// <summary>
     /// Gets or sets a value indicating whether to use jitter in retry delays.
     /// </summary>
     /// <value><c>true</c> to add random jitter to retry delays; otherwise, <c>false</c>. Default is <c>true</c>.</value>
+    /// <remarks>
+    /// <para>This setting can be overridden using the environment variable:</para>
+    /// <c>USE_RETRY_JITTER</c>
+    /// </remarks>
     public bool UseRetryJitter { get; set; } = true;
 
     /// <summary>
@@ -85,7 +140,10 @@ public class AppSettings
         var configFile = configPaths.FirstOrDefault();
         if (configFile == null)
         {
-            // No config file found, return defaults
+            // No config file found, Apply Environment Variables
+            Console.WriteLine("No configuration file found. Using default and environment settings.");
+            // Apply environment variables to defaults
+            ApplyEnvironmentVariables(settings);
             return settings;
         }
 
@@ -120,7 +178,111 @@ public class AppSettings
             Console.WriteLine("Using default configuration values.");
         }
 
+        // Override with environment variables if present
+        ApplyEnvironmentVariables(settings);
+
         return settings;
+    }
+
+    /// <summary>
+    /// Applies environment variable overrides to the settings.
+    /// </summary>
+    private static void ApplyEnvironmentVariables(AppSettings settings)
+    {
+        // ✅ Complete all existing environment variables
+        if (Environment.GetEnvironmentVariable("NUGET_API_BASE_URL") is string apiBaseUrl && !string.IsNullOrEmpty(apiBaseUrl))
+            settings.NuGetApiBaseUrl = apiBaseUrl;
+
+        if (Environment.GetEnvironmentVariable("NUGET_API_MAX_CONCURRENT_REQUESTS") is string maxConcurrent && int.TryParse(maxConcurrent, out var maxConcurrentValue))
+            settings.MaxConcurrentRequests = maxConcurrentValue;
+
+        if (Environment.GetEnvironmentVariable("HTTP_TIMEOUT_SECONDS") is string timeout && int.TryParse(timeout, out var timeoutValue))
+            settings.HttpTimeoutSeconds = timeoutValue;
+
+        if (Environment.GetEnvironmentVariable("MAX_RETRY_ATTEMPTS") is string retryAttempts && int.TryParse(retryAttempts, out var retryValue))
+            settings.MaxRetryAttempts = retryValue;
+
+        if (Environment.GetEnvironmentVariable("VERBOSE_LOGGING") is string verbose && bool.TryParse(verbose, out var verboseValue))
+            settings.VerboseLogging = verboseValue;
+
+        if (Environment.GetEnvironmentVariable("NUGET_GALLERY_BASE_URL") is string galleryUrl && !string.IsNullOrEmpty(galleryUrl))
+            settings.NuGetGalleryBaseUrl = galleryUrl;
+
+        if (Environment.GetEnvironmentVariable("DEFAULT_OUTPUT_FORMAT") is string format && !string.IsNullOrEmpty(format))
+            settings.DefaultFormat = format;
+
+        if (Environment.GetEnvironmentVariable("INCLUDE_TRANSITIVE") is string includeTransitive && bool.TryParse(includeTransitive, out var includeTransitiveValue))
+            settings.IncludeTransitive = includeTransitiveValue;
+
+        if (Environment.GetEnvironmentVariable("SHOW_DEPENDENCIES") is string showDeps && bool.TryParse(showDeps, out var showDepsValue))
+            settings.ShowDependencies = showDepsValue;
+
+        if (Environment.GetEnvironmentVariable("INCLUDE_PRERELEASE") is string includePrerelease && bool.TryParse(includePrerelease, out var prereleaseValue))
+            settings.IncludePrerelease = prereleaseValue;
+
+        if (Environment.GetEnvironmentVariable("MIN_SEVERITY") is string minSeverity && !string.IsNullOrEmpty(minSeverity))
+            settings.MinSeverity = minSeverity;
+
+        // ✅ Add missing retry configuration environment variables
+        if (Environment.GetEnvironmentVariable("RETRY_DELAY_SECONDS") is string retryDelay && double.TryParse(retryDelay, out var retryDelayValue))
+            settings.RetryDelaySeconds = retryDelayValue;
+
+        if (Environment.GetEnvironmentVariable("RETRY_BACKOFF_FACTOR") is string backoffFactor && double.TryParse(backoffFactor, out var backoffValue))
+            settings.RetryBackoffFactor = backoffValue;
+
+        if (Environment.GetEnvironmentVariable("MAX_RETRY_DELAY_SECONDS") is string maxRetryDelay && int.TryParse(maxRetryDelay, out var maxRetryDelayValue))
+            settings.MaxRetryDelaySeconds = maxRetryDelayValue;
+
+        if (Environment.GetEnvironmentVariable("USE_RETRY_JITTER") is string useJitter && bool.TryParse(useJitter, out var jitterValue))
+            settings.UseRetryJitter = jitterValue;
+
+        // ✅ Add package exclusions from environment (comma-separated)
+        if (Environment.GetEnvironmentVariable("EXCLUDE_PACKAGES") is string excludePackages && !string.IsNullOrEmpty(excludePackages))
+        {
+            var packages = excludePackages.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                                        .Select(p => p.Trim())
+                                        .Where(p => !string.IsNullOrEmpty(p))
+                                        .ToList();
+            if (packages.Any())
+                settings.ExcludePackages = packages;
+        }
+
+        // Gallery URL
+        if (Environment.GetEnvironmentVariable("NUGET_GALLERY_BASE_URL") is string nugetGalleryUrl && !string.IsNullOrEmpty(nugetGalleryUrl))
+            settings.NuGetGalleryBaseUrl = nugetGalleryUrl;
+
+        // Retry configuration
+        if (Environment.GetEnvironmentVariable("RETRY_DELAY_SECONDS") is string retryDelaySeconds && double.TryParse(retryDelaySeconds, out var retryDelaySecondsValue))
+            settings.RetryDelaySeconds = retryDelaySecondsValue;
+
+        if (Environment.GetEnvironmentVariable("RETRY_BACKOFF_FACTOR") is string retryBackoffFactor && double.TryParse(retryBackoffFactor, out var retryBackoffFactorValue))
+            settings.RetryBackoffFactor = retryBackoffFactorValue;
+
+        if (Environment.GetEnvironmentVariable("MAX_RETRY_DELAY_SECONDS") is string maxRetryDelaySeconds && int.TryParse(maxRetryDelaySeconds, out var maxRetryDelaySecondsValue))
+            settings.MaxRetryDelaySeconds = maxRetryDelaySecondsValue;
+
+        if (Environment.GetEnvironmentVariable("USE_RETRY_JITTER") is string useRetryJitter && bool.TryParse(useRetryJitter, out var retryJitterValue))
+            settings.UseRetryJitter = retryJitterValue;
+
+        // Compression setting
+        if (Environment.GetEnvironmentVariable("USE_COMPRESSION") is string useCompression && bool.TryParse(useCompression, out var compressionValue))
+            settings.UseCompression = compressionValue;
+
+        // Report settings
+        if (Environment.GetEnvironmentVariable("GROUP_BY_FRAMEWORK") is string groupByFramework && bool.TryParse(groupByFramework, out var groupValue))
+            settings.GroupByFramework = groupValue;
+
+        if (Environment.GetEnvironmentVariable("SORT_BY_NAME") is string sortByName && bool.TryParse(sortByName, out var sortValue))
+            settings.SortByName = sortValue;
+
+        if (Environment.GetEnvironmentVariable("SHOW_OUTDATED_ONLY") is string showOutdated && bool.TryParse(showOutdated, out var outdatedValue))
+            settings.ShowOutdatedOnly = outdatedValue;
+
+        if (Environment.GetEnvironmentVariable("SHOW_VULNERABLE_ONLY") is string showVuln && bool.TryParse(showVuln, out var vulnValue))
+            settings.ShowVulnerableOnly = vulnValue;
+
+        if (Environment.GetEnvironmentVariable("SHOW_DEPRECATED_ONLY") is string showDeprecated && bool.TryParse(showDeprecated, out var deprecatedValue))
+            settings.ShowDeprecatedOnly = deprecatedValue;
     }
 
     /// <summary>
@@ -145,6 +307,19 @@ public class AppSettings
 
             if (apiSettings.RetryAttempts >= 0)
                 settings.MaxRetryAttempts = apiSettings.RetryAttempts;
+
+            // ✅ Add missing retry configuration mappings
+            if (apiSettings.RetryDelaySeconds > 0)
+                settings.RetryDelaySeconds = apiSettings.RetryDelaySeconds;
+
+            if (apiSettings.RetryBackoffFactor > 0)
+                settings.RetryBackoffFactor = apiSettings.RetryBackoffFactor;
+
+            if (apiSettings.MaxRetryDelaySeconds > 0)
+                settings.MaxRetryDelaySeconds = apiSettings.MaxRetryDelaySeconds;
+
+            settings.UseRetryJitter = apiSettings.UseRetryJitter;
+            settings.UseCompression = apiSettings.UseCompression;
         }
 
         // Apply output settings
@@ -170,12 +345,14 @@ public class AppSettings
                 settings.MinSeverity = filterSettings.MinSeverity;
         }
 
-        // Apply report settings
+        // Apply report settings mapping
         if (config.ReportSettings is { } reportSettings)
         {
             settings.ShowOutdatedOnly = reportSettings.ShowOutdatedOnly;
             settings.ShowVulnerableOnly = reportSettings.ShowVulnerableOnly;
             settings.ShowDeprecatedOnly = reportSettings.ShowDeprecatedOnly;
+            settings.GroupByFramework = reportSettings.GroupByFramework;
+            settings.SortByName = reportSettings.SortByName;
         }
     }
 
@@ -203,6 +380,16 @@ public class AppSettings
 
         if (MaxRetryDelaySeconds <= 0 || MaxRetryDelaySeconds > 300)
             throw new ArgumentOutOfRangeException(nameof(MaxRetryDelaySeconds), "Must be between 1 and 300 seconds");
+
+        // ✅ Validation for MinSeverity
+        var validSeverities = new[] { "low", "medium", "high", "critical" };
+        if (!validSeverities.Contains(MinSeverity.ToLowerInvariant()))
+            throw new ArgumentException($"MinSeverity must be one of: {string.Join(", ", validSeverities)}", nameof(MinSeverity));
+
+        // ✅ Validation for DefaultFormat
+        var validFormats = new[] { "console", "html", "markdown", "json" };
+        if (!validFormats.Contains(DefaultFormat.ToLowerInvariant()))
+            throw new ArgumentException($"DefaultFormat must be one of: {string.Join(", ", validFormats)}", nameof(DefaultFormat));
 
         // Validate URLs
         if (!Uri.TryCreate(NuGetApiBaseUrl, UriKind.Absolute, out var apiUri) ||
@@ -235,12 +422,16 @@ public class AppSettings
     /// <item><description>Development and debugging</description></item>
     /// </list>
     /// <para>Note: Verbose logging can significantly increase output volume and may impact performance.</para>
+    /// <para>This setting can be overridden using the environment variable:</para>
+    /// <c>VERBOSE_LOGGING</c>
     /// </remarks>
     /// <example>
     /// <code>
     /// var settings = new AppSettings { VerboseLogging = true };
     /// // Or in configuration file:
     /// // "outputSettings": { "verboseLogging": true }
+    /// // Or via environment variable:
+    /// // export VERBOSE_LOGGING=true
     /// </code>
     /// </example>
     public bool VerboseLogging { get; set; } = false;
@@ -517,6 +708,21 @@ public class AppSettings
     /// </code>
     /// </example>
     public string MinSeverity { get; set; } = "low";
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to use compression for HTTP requests.
+    /// </summary>
+    public bool UseCompression { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to group packages by framework in reports.
+    /// </summary>
+    public bool GroupByFramework { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to sort packages alphabetically by name.
+    /// </summary>
+    public bool SortByName { get; set; } = false;
 }
 
 /// <summary>
@@ -614,9 +820,10 @@ public class CommandLineOptions
 /// </summary>
 /// <remarks>
 /// This class represents the top-level structure of the NuGet Inspector configuration file format.
-/// It organizes configuration settings into logical groups for API settings, output formatting,
-/// package filtering, and report generation options. The configuration file uses JSON format
-/// and supports schema validation through the associated nugetinspector-schema.json file.
+/// Configuration files should reference the schema for validation:
+/// <c>"$schema": "./nugetinspector-schema.json"</c>
+///
+/// For complete schema documentation, see: nugetinspector-schema.json
 /// </remarks>
 /// <example>
 /// Example configuration file structure:
@@ -829,7 +1036,32 @@ public class ApiSettings
     /// </code>
     /// </example>
     [JsonPropertyName("retryAttempts")]
+
     public int RetryAttempts { get; set; }
+
+    /// <summary>
+    /// Gets or sets the delay in seconds between retry attempts.
+    /// </summary>
+    [JsonPropertyName("retryDelaySeconds")]
+    public double RetryDelaySeconds { get; set; } = 2.0;
+
+    /// <summary>
+    /// Gets or sets the exponential backoff factor for retry delays.
+    /// </summary>
+    [JsonPropertyName("retryBackoffFactor")]
+    public double RetryBackoffFactor { get; set; } = 2.0;
+
+    /// <summary>
+    /// Gets or sets the maximum retry delay in seconds.
+    /// </summary>
+    [JsonPropertyName("maxRetryDelaySeconds")]
+    public int MaxRetryDelaySeconds { get; set; } = 30;
+
+    /// <summary>
+    /// Gets or sets whether to use jitter in retry delays.
+    /// </summary>
+    [JsonPropertyName("useRetryJitter")]
+    public bool UseRetryJitter { get; set; } = true;
 
     /// <summary>
     /// Gets or sets a value indicating whether to use HTTP compression for requests.
@@ -856,7 +1088,7 @@ public class ApiSettings
     /// </code>
     /// </example>
     [JsonPropertyName("useCompression")]
-    public bool UseCompression { get; set; }
+    public bool UseCompression { get; set; } = true;
 }
 
 /// <summary>
@@ -896,7 +1128,7 @@ public class OutputSettings
     /// </code>
     /// </example>
     [JsonPropertyName("defaultFormat")]
-    public string? DefaultFormat { get; set; }
+    public string? DefaultFormat { get; set; } = "console";
 
     /// <summary>
     /// Gets or sets a value indicating whether to include transitive packages in reports.
@@ -925,7 +1157,7 @@ public class OutputSettings
     /// </code>
     /// </example>
     [JsonPropertyName("includeTransitive")]
-    public bool IncludeTransitive { get; set; }
+    public bool IncludeTransitive { get; set; } = true;
 
     /// <summary>
     /// Gets or sets a value indicating whether to show package dependency information.
@@ -953,7 +1185,7 @@ public class OutputSettings
     /// </code>
     /// </example>
     [JsonPropertyName("showDependencies")]
-    public bool ShowDependencies { get; set; }
+    public bool ShowDependencies { get; set; } = true;
 
     /// <summary>
     /// Gets or sets a value indicating whether to enable verbose logging output.
@@ -987,7 +1219,7 @@ public class OutputSettings
     /// </code>
     /// </example>
     [JsonPropertyName("verboseLogging")]
-    public bool VerboseLogging { get; set; }
+    public bool VerboseLogging { get; set; } = false;
 }
 
 /// <summary>
@@ -1060,7 +1292,7 @@ public class FilterSettings
     /// </code>
     /// </example>
     [JsonPropertyName("includePrerelease")]
-    public bool IncludePrerelease { get; set; }
+    public bool IncludePrerelease { get; set; } = false;
 
     /// <summary>
     /// Gets or sets the minimum vulnerability severity level to report.
@@ -1089,7 +1321,7 @@ public class FilterSettings
     /// </code>
     /// </example>
     [JsonPropertyName("minSeverity")]
-    public string? MinSeverity { get; set; }
+    public string? MinSeverity { get; set; } = "low";
 }
 
 /// <summary>
@@ -1129,7 +1361,7 @@ public class ReportSettings
     /// </code>
     /// </example>
     [JsonPropertyName("groupByFramework")]
-    public bool GroupByFramework { get; set; }
+    public bool GroupByFramework { get; set; } = false;
 
     /// <summary>
     /// Gets or sets a value indicating whether to sort packages alphabetically by name.
@@ -1159,7 +1391,7 @@ public class ReportSettings
     /// </code>
     /// </example>
     [JsonPropertyName("sortByName")]
-    public bool SortByName { get; set; }
+    public bool SortByName { get; set; } = false;
 
     /// <summary>
     /// Gets or sets a value indicating whether to show only outdated packages in reports.
@@ -1189,7 +1421,7 @@ public class ReportSettings
     /// </code>
     /// </example>
     [JsonPropertyName("showOutdatedOnly")]
-    public bool ShowOutdatedOnly { get; set; }
+    public bool ShowOutdatedOnly { get; set; } = false;
 
     /// <summary>
     /// Gets or sets a value indicating whether to show only vulnerable packages in reports.
@@ -1221,7 +1453,7 @@ public class ReportSettings
     /// </code>
     /// </example>
     [JsonPropertyName("showVulnerableOnly")]
-    public bool ShowVulnerableOnly { get; set; }
+    public bool ShowVulnerableOnly { get; set; } = false;
 
     /// <summary>
     /// Gets or sets a value indicating whether to show only deprecated packages in reports.
@@ -1253,5 +1485,5 @@ public class ReportSettings
     /// </code>
     /// </example>
     [JsonPropertyName("showDeprecatedOnly")]
-    public bool ShowDeprecatedOnly { get; set; }
+    public bool ShowDeprecatedOnly { get; set; } = false;
 }

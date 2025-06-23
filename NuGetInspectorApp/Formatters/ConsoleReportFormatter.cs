@@ -302,9 +302,16 @@ public class ConsoleReportFormatter : IReportFormatter
     {
         sb.AppendLine("Transitive packages:");
         if (fw.TransitivePackages?.Count > 0)
-            foreach (var tp in fw.TransitivePackages)
+        {
+            foreach (var tp in fw.TransitivePackages.OrderBy(p => p.Id, StringComparer.OrdinalIgnoreCase))
+            {
                 sb.AppendLine($" • {tp.Id} ({tp.ResolvedVersion})");
+            }
+            sb.AppendLine($" ({fw.TransitivePackages.Count} transitive dependencies found)");
+        }
         else
+        {
             sb.AppendLine(" (none)");
+        }
     }
 }

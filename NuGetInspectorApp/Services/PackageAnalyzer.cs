@@ -84,7 +84,7 @@ public class PackageAnalyzer : IPackageAnalyzer
 
         var result = new Dictionary<string, PackageReference>(StringComparer.OrdinalIgnoreCase);
 
-        // Helper to upsert package info from a list
+        // ✅ Helper to upsert package info from a list - ONLY processes TOP-LEVEL packages
         void UpsertFrom(List<ProjectInfo> projects, string reportType, Action<PackageReference, PackageReference> mergeAction)
         {
             var project = projects.FirstOrDefault(p => string.Equals(p.Path, projectPath, StringComparison.OrdinalIgnoreCase));
@@ -100,35 +100,51 @@ public class PackageAnalyzer : IPackageAnalyzer
                 _logger.LogDebug("No framework matching {Framework} found in project {ProjectPath} for {ReportType} report.", framework, projectPath, reportType);
                 return;
             }
-            if (fw.TopLevelPackages == null)
+
+            // ✅ ONLY Process TopLevelPackages - DO NOT process TransitivePackages here
+            if (fw.TopLevelPackages != null)
+            {
+                foreach (var pkg in fw.TopLevelPackages)
+                {
+                    if (pkg == null || string.IsNullOrEmpty(pkg.Id))
+                    {
+                        _logger.LogWarning("Skipping a null package or package with null/empty ID in project {ProjectPath}, framework {Framework}, {ReportType} report (top-level).", projectPath, framework, reportType);
+                        continue;
+                    }
+
+                    ProcessPackage(pkg, reportType, "top-level", mergeAction);
+                }
+            }
+            else
             {
                 _logger.LogDebug("TopLevelPackages list is null for project {ProjectPath}, framework {Framework} in {ReportType} report.", projectPath, framework, reportType);
-                return;
             }
 
-            foreach (var pkg in fw.TopLevelPackages)
+            // ✅ Log transitive packages for debugging but DO NOT merge them
+            if (reportType == "baseline" && fw.TransitivePackages != null)
             {
-                if (pkg == null || string.IsNullOrEmpty(pkg.Id))
-                {
-                    _logger.LogWarning("Skipping a null package or package with null/empty ID in project {ProjectPath}, framework {Framework}, {ReportType} report.", projectPath, framework, reportType);
-                    continue;
-                }
-
-                if (!result.TryGetValue(pkg.Id, out var existing))
-                {
-                    existing = ClonePackageReference(pkg);
-                    result[pkg.Id] = existing;
-                    _logger.LogTrace("Added new package {PackageId} to results from {ReportType} report.", pkg.Id, reportType);
-                }
-                else
-                {
-                    _logger.LogTrace("Merging data for existing package {PackageId} from {ReportType} report.", pkg.Id, reportType);
-                }
-                mergeAction(existing, pkg); // Apply specific merge logic
+                _logger.LogInformation("Found {TransitiveCount} transitive packages for {ProjectPath}, framework {Framework} (will be displayed separately)",
+                    fw.TransitivePackages.Count, projectPath, framework);
             }
         }
 
-        // Step 1: Process Baseline - This establishes all packages in the project
+        // Helper method to process individual packages
+        void ProcessPackage(PackageReference pkg, string reportType, string packageType, Action<PackageReference, PackageReference> mergeAction)
+        {
+            if (!result.TryGetValue(pkg.Id, out var existing))
+            {
+                existing = ClonePackageReference(pkg);
+                result[pkg.Id] = existing;
+                _logger.LogTrace("Added new {PackageType} package {PackageId} to results from {ReportType} report.", packageType, pkg.Id, reportType);
+            }
+            else
+            {
+                _logger.LogTrace("Merging data for existing {PackageType} package {PackageId} from {ReportType} report.", packageType, pkg.Id, reportType);
+            }
+            mergeAction(existing, pkg); // Apply specific merge logic
+        }
+
+        // Step 1: Process Baseline - This establishes all TOP-LEVEL packages in the project
         _logger.LogDebug("Processing baseline packages for project {ProjectPath}, framework {Framework}.", projectPath, framework);
         UpsertFrom(baselineProjects, "baseline", (existing, incoming) =>
         {
@@ -253,7 +269,7 @@ public class PackageAnalyzer : IPackageAnalyzer
             }
         }
 
-        _logger.LogInformation("Merged {PackageCount} unique packages for project {ProjectPath}, framework {Framework}.", result.Count, projectPath, framework);
+        _logger.LogInformation("Merged {PackageCount} unique top-level packages for project {ProjectPath}, framework {Framework}.", result.Count, projectPath, framework);
         return result;
     }
 

@@ -365,18 +365,31 @@ internal static class Program
                 services.AddHttpClient<INuGetApiService, NuGetApiService>((serviceProvider, client) =>
                     {
                         var appConfig = serviceProvider.GetRequiredService<AppSettings>();
+
                         if (!string.IsNullOrWhiteSpace(appConfig.NuGetApiBaseUrl))
                         {
                             client.BaseAddress = new Uri(appConfig.NuGetApiBaseUrl);
                         }
+
                         client.Timeout = TimeSpan.FromSeconds(appConfig.HttpTimeoutSeconds);
                         client.DefaultRequestHeaders.Add("User-Agent", "NuGetInspector/1.0");
                         client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+                        if (appConfig.UseCompression)
+                        {
+                            client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate");
+                        }
                     })
-                    .ConfigurePrimaryHttpMessageHandler(serviceProvider => new HttpClientHandler
+                    .ConfigurePrimaryHttpMessageHandler(serviceProvider =>
                     {
-                        AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
-                        MaxConnectionsPerServer = serviceProvider.GetRequiredService<AppSettings>().MaxConcurrentRequests
+                        var appConfig = serviceProvider.GetRequiredService<AppSettings>();
+                        return new HttpClientHandler
+                        {
+                            AutomaticDecompression = appConfig.UseCompression
+                                ? DecompressionMethods.GZip | DecompressionMethods.Deflate
+                                : DecompressionMethods.None,
+                            MaxConnectionsPerServer = appConfig.MaxConcurrentRequests
+                        };
                     });
             });
 }
