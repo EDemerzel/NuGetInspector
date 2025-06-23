@@ -8,6 +8,11 @@ on:
     release:
         types: [published]
 
+# Required for Trivy SARIF upload to GitHub Code Scanning
+permissions:
+    contents: read
+    security-events: write
+
 env:
     DOTNET_VERSION: "9.0.x"
     BUILD_CONFIGURATION: "Release"
@@ -215,9 +220,11 @@ jobs:
         if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
 
         steps:
-            - uses: actions/checkout@v4
+            - name: 📦 Checkout Repository
+              uses: actions/checkout@v4
 
-            - name: Run Trivy vulnerability scanner
+            - name: 🔍 Run Trivy Vulnerability Scanner
+              id: trivy
               uses: aquasecurity/trivy-action@master
               with:
                   scan-type: "fs"
@@ -225,8 +232,12 @@ jobs:
                   format: "sarif"
                   output: "trivy-results.sarif"
 
-            - name: Upload Trivy scan results
+            - name: 📤 Upload Trivy Scan Results (if not from fork)
+              if: always() && github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
               uses: github/codeql-action/upload-sarif@v3
-              if: always()
               with:
                   sarif_file: "trivy-results.sarif"
+
+            - name: ℹ️ Skip SARIF Upload for Fork PRs
+              if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+              run: echo "⚠️ SARIF upload skipped for forked PR (read-only token)."
