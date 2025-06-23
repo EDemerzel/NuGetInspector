@@ -88,6 +88,7 @@ jobs:
               run: dotnet build --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
 
             - name: Publish Self-Contained Executable
+              shell: bash
               run: |
                   dotnet publish ${{ env.APPLICATION_NAME }}/${{ env.APPLICATION_NAME }}.csproj \
                     --configuration ${{ env.BUILD_CONFIGURATION }} \
