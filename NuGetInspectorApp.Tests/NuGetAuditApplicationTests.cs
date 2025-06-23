@@ -308,12 +308,22 @@ public class NuGetAuditApplicationTests
     [Test]
     public async Task RunAsync_WithInvalidOutputPath_ReturnsFailureAndLogsError()
     {
-        // Arrange
+        // Arrange - Create a path to a directory that doesn't exist and has multiple levels
+        var tempDir = Path.GetTempPath();
+        var invalidPath = Path.Combine(tempDir, "definitely_nonexistent_" + Guid.NewGuid(), "nested", "deep", "output.txt");
+
+        // Ensure the parent directories don't exist
+        var parentDir = Path.GetDirectoryName(invalidPath)!;
+        if (Directory.Exists(parentDir))
+        {
+            Directory.Delete(parentDir, true);
+        }
+
         var options = new CommandLineOptions
         {
             SolutionPath = "test.sln",
             OutputFormat = "console",
-            OutputFile = "Z:\\invalid\\path\\output.txt" // Invalid path
+            OutputFile = invalidPath
         };
 
         var projectInfos = CreateTestProjectInfos();
