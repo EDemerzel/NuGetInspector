@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>NuGetInspectorApp Documentation</title>
+    <style>
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 2em;
+            background-color: #f8f9fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        h1 {
+            color: #0d47a1;
+            border-bottom: 2px solid #1976d2;
+            padding-bottom: 0.3em;
+            margin-bottom: 1em;
+        }
+
+        h2 {
+            color: #1565c0;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+
+        p {
+            margin: 0.5em 0 1em;
+            line-height: 1.6;
+        }
+
+        .member-block {
+            background-color: #ffffff;
+            border-left: 4px solid #42a5f5;
+            padding: 1em;
+            margin: 1em 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-radius: 4px;
+        }
+
+        code {
+            background-color: #eceff1;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .member-name {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #424242;
+        }
+
+        .no-summary {
+            color: #757575;
+            font-style: italic;
+        }
+    
+    </style>
+</head>
+<body>
+    <h1>NuGetInspectorApp Documentation</h1>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Configuration.AppSettings</code></h2>
+        <p>Configuration settings for the NuGet Inspector application.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.NuGetApiBaseUrl</code></h2>
+        <p>Gets or sets the base URL for NuGet API operations.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.NuGetGalleryBaseUrl</code></h2>
+        <p>Base URL for NuGet Gallery links.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.MaxConcurrentRequests</code></h2>
+        <p>Gets or sets the maximum number of concurrent HTTP requests allowed.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.HttpTimeoutSeconds</code></h2>
+        <p>Gets or sets the HTTP request timeout in seconds.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.MaxRetryAttempts</code></h2>
+        <p>Gets or sets the maximum number of retry attempts for failed HTTP requests.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.RetryDelaySeconds</code></h2>
+        <p>Gets or sets the delay in seconds between retry attempts for failed HTTP requests.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.RetryBackoffFactor</code></h2>
+        <p>Gets or sets the exponential backoff factor for retry delays.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.MaxRetryDelaySeconds</code></h2>
+        <p>Gets or sets the maximum retry delay in seconds.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.UseRetryJitter</code></h2>
+        <p>Gets or sets a value indicating whether to use jitter in retry delays.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Configuration.AppSettings.LoadFromConfigFile(System.String)</code></h2>
+        <p>Loads settings from a .nugetinspector configuration file if it exists.
+            Merges file-based configuration with default values.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Configuration.AppSettings.ApplyEnvironmentVariables(NuGetInspectorApp.Configuration.AppSettings)</code></h2>
+        <p>Applies environment variable overrides to the settings.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Configuration.AppSettings.ApplyConfigurationSettings(NuGetInspectorApp.Configuration.AppSettings,NuGetInspectorApp.Configuration.NuGetInspectorConfig)</code></h2>
+        <p>Applies configuration from the parsed config file to the AppSettings instance.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Configuration.AppSettings.Validate</code></h2>
+        <p>Validates the configuration settings and throws exceptions if any values are out of range.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.VerboseLogging</code></h2>
+        <p>Gets or sets a value indicating whether verbose logging is enabled.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.DefaultFormat</code></h2>
+        <p>Gets or sets the default output format for reports.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.IncludeTransitive</code></h2>
+        <p>Gets or sets a value indicating whether to include transitive packages in reports.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.ShowDependencies</code></h2>
+        <p>Gets or sets a value indicating whether to show package dependency information.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.ShowOutdatedOnly</code></h2>
+        <p>Gets or sets a value indicating whether to show only outdated packages in reports.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.ShowVulnerableOnly</code></h2>
+        <p>Gets or sets a value indicating whether to show only vulnerable packages in reports.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.ShowDeprecatedOnly</code></h2>
+        <p>Gets or sets a value indicating whether to show only deprecated packages in reports.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.IncludePrerelease</code></h2>
+        <p>Gets or sets a value indicating whether to include pre-release packages in analysis.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.ExcludePackages</code></h2>
+        <p>Gets or sets the list of package IDs to exclude from analysis.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.MinSeverity</code></h2>
+        <p>Gets or sets the minimum vulnerability severity level to report.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.UseCompression</code></h2>
+        <p>Gets or sets a value indicating whether to use compression for HTTP requests.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.GroupByFramework</code></h2>
+        <p>Gets or sets a value indicating whether to group packages by framework in reports.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.AppSettings.SortByName</code></h2>
+        <p>Gets or sets a value indicating whether to sort packages alphabetically by name.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Configuration.CommandLineOptions</code></h2>
+        <p>Represents command line options for the NuGet Inspector application.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.CommandLineOptions.SolutionPath</code></h2>
+        <p>Gets or sets the path to the solution file to analyze.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.CommandLineOptions.OutputFormat</code></h2>
+        <p>Gets or sets the output format for the report.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.CommandLineOptions.OutputFile</code></h2>
+        <p>Gets or sets the output file path for saving the report.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.CommandLineOptions.VerboseOutput</code></h2>
+        <p>Gets or sets a value indicating whether verbose output is enabled.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.CommandLineOptions.OnlyOutdated</code></h2>
+        <p>Gets or sets a value indicating whether to show only outdated packages.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.CommandLineOptions.OnlyVulnerable</code></h2>
+        <p>Gets or sets a value indicating whether to show only vulnerable packages.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.CommandLineOptions.OnlyDeprecated</code></h2>
+        <p>Gets or sets a value indicating whether to show only deprecated packages.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Configuration.CommandLineOptions.Validate</code></h2>
+        <p>Validates the command line options.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Configuration.NuGetInspectorConfig</code></h2>
+        <p>Root configuration object for .nugetinspector files.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.NuGetInspectorConfig.ApiSettings</code></h2>
+        <p>Gets or sets the API-related configuration settings.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.NuGetInspectorConfig.OutputSettings</code></h2>
+        <p>Gets or sets the output formatting configuration settings.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.NuGetInspectorConfig.FilterSettings</code></h2>
+        <p>Gets or sets the package filtering configuration settings.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.NuGetInspectorConfig.ReportSettings</code></h2>
+        <p>Gets or sets the report generation configuration settings.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Configuration.ApiSettings</code></h2>
+        <p>Represents API-related configuration settings for NuGet API interactions.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.ApiSettings.BaseUrl</code></h2>
+        <p>Gets or sets the base URL for NuGet API operations.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.ApiSettings.GalleryUrl</code></h2>
+        <p>Gets or sets the base URL for NuGet Gallery package links.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.ApiSettings.Timeout</code></h2>
+        <p>Gets or sets the HTTP request timeout in seconds.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.ApiSettings.MaxConcurrentRequests</code></h2>
+        <p>Gets or sets the maximum number of concurrent HTTP requests.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.ApiSettings.RetryAttempts</code></h2>
+        <p>Gets or sets the maximum number of retry attempts for failed HTTP requests.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.ApiSettings.RetryDelaySeconds</code></h2>
+        <p>Gets or sets the delay in seconds between retry attempts.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.ApiSettings.RetryBackoffFactor</code></h2>
+        <p>Gets or sets the exponential backoff factor for retry delays.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.ApiSettings.MaxRetryDelaySeconds</code></h2>
+        <p>Gets or sets the maximum retry delay in seconds.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.ApiSettings.UseRetryJitter</code></h2>
+        <p>Gets or sets whether to use jitter in retry delays.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.ApiSettings.UseCompression</code></h2>
+        <p>Gets or sets a value indicating whether to use HTTP compression for requests.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Configuration.OutputSettings</code></h2>
+        <p>Represents output formatting configuration settings.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.OutputSettings.DefaultFormat</code></h2>
+        <p>Gets or sets the default output format for reports.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.OutputSettings.IncludeTransitive</code></h2>
+        <p>Gets or sets a value indicating whether to include transitive packages in reports.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.OutputSettings.ShowDependencies</code></h2>
+        <p>Gets or sets a value indicating whether to show package dependency information.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.OutputSettings.VerboseLogging</code></h2>
+        <p>Gets or sets a value indicating whether to enable verbose logging output.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Configuration.FilterSettings</code></h2>
+        <p>Represents package filtering configuration settings.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.FilterSettings.ExcludePackages</code></h2>
+        <p>Gets or sets the list of package IDs to exclude from analysis.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.FilterSettings.IncludePrerelease</code></h2>
+        <p>Gets or sets a value indicating whether to include pre-release packages in analysis.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.FilterSettings.MinSeverity</code></h2>
+        <p>Gets or sets the minimum vulnerability severity level to report.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Configuration.ReportSettings</code></h2>
+        <p>Represents report generation configuration settings.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.ReportSettings.GroupByFramework</code></h2>
+        <p>Gets or sets a value indicating whether to group packages by target framework.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.ReportSettings.SortByName</code></h2>
+        <p>Gets or sets a value indicating whether to sort packages alphabetically by name.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.ReportSettings.ShowOutdatedOnly</code></h2>
+        <p>Gets or sets a value indicating whether to show only outdated packages in reports.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.ReportSettings.ShowVulnerableOnly</code></h2>
+        <p>Gets or sets a value indicating whether to show only vulnerable packages in reports.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Configuration.ReportSettings.ShowDeprecatedOnly</code></h2>
+        <p>Gets or sets a value indicating whether to show only deprecated packages in reports.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Formatters.ConsoleReportFormatter</code></h2>
+        <p>Provides console-friendly formatting for package analysis reports.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Formatters.ConsoleReportFormatter.FormatReportAsync(System.Collections.Generic.List{NuGetInspectorApp.Models.ProjectInfo},System.Collections.Generic.Dictionary{System.String,System.Collections.Generic.Dictionary{System.String,NuGetInspectorApp.Models.MergedPackage}},System.Collections.Generic.Dictionary{System.String,NuGetInspectorApp.Models.PackageMetaData},System.Threading.CancellationToken)</code></h2>
+        <p><span class="no-summary">No summary available.</span></p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Formatters.ConsoleReportFormatter.FormatDirectPackages(System.Text.StringBuilder,System.Collections.Generic.Dictionary{System.String,NuGetInspectorApp.Models.MergedPackage},System.Collections.Generic.Dictionary{System.String,NuGetInspectorApp.Models.PackageMetaData})</code></h2>
+        <p>Formats direct package dependencies for the console output.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Formatters.ConsoleReportFormatter.CleanDescriptionForConsole(System.String)</code></h2>
+        <p>Cleans a package description for console output by removing problematic characters.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Formatters.ConsoleReportFormatter.FormatVersionInformation(System.Text.StringBuilder,NuGetInspectorApp.Models.MergedPackage)</code></h2>
+        <p>Formats version information for a package.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Formatters.ConsoleReportFormatter.FormatDeprecationInformation(System.Text.StringBuilder,NuGetInspectorApp.Models.MergedPackage,NuGetInspectorApp.Models.PackageMetaData)</code></h2>
+        <p>Formats deprecation information for a package.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Formatters.ConsoleReportFormatter.FormatVulnerabilityInformation(System.Text.StringBuilder,NuGetInspectorApp.Models.MergedPackage)</code></h2>
+        <p>Formats vulnerability information for a package.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Formatters.ConsoleReportFormatter.FormatDependencyInformation(System.Text.StringBuilder,NuGetInspectorApp.Models.MergedPackage,System.Collections.Generic.Dictionary{System.String,NuGetInspectorApp.Models.PackageMetaData},System.String)</code></h2>
+        <p>Formats dependency information for a package.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Formatters.ConsoleReportFormatter.FormatTransitivePackages(System.Text.StringBuilder,NuGetInspectorApp.Models.FrameworkInfo)</code></h2>
+        <p>Formats transitive package information for a framework.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Formatters.IReportFormatter</code></h2>
+        <p>Defines the contract for formatting package analysis reports into different output formats.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Formatters.IReportFormatter.FormatReportAsync(System.Collections.Generic.List{NuGetInspectorApp.Models.ProjectInfo},System.Collections.Generic.Dictionary{System.String,System.Collections.Generic.Dictionary{System.String,NuGetInspectorApp.Models.MergedPackage}},System.Collections.Generic.Dictionary{System.String,NuGetInspectorApp.Models.PackageMetaData},System.Threading.CancellationToken)</code></h2>
+        <p>Asynchronously formats a package analysis report based on the provided data.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Models.DotNetListReport</code></h2>
+        <p>Represents the root object for dotnet list package JSON output.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.DotNetListReport.Version</code></h2>
+        <p>Gets or sets the schema version of the report format.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.DotNetListReport.Parameters</code></h2>
+        <p>Gets or sets the command-line parameters used to generate the report.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.DotNetListReport.Sources</code></h2>
+        <p>Gets or sets the list of NuGet package sources used for the report.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.DotNetListReport.Projects</code></h2>
+        <p>Gets or sets the collection of projects included in the report.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Models.ProjectInfo</code></h2>
+        <p>Represents information about a single project within a solution.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.ProjectInfo.Path</code></h2>
+        <p>Gets or sets the file system path to the project file.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.ProjectInfo.Frameworks</code></h2>
+        <p>Gets or sets the collection of target frameworks and their associated packages.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Models.FrameworkInfo</code></h2>
+        <p>Represents package information for a specific target framework within a project.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.FrameworkInfo.Framework</code></h2>
+        <p>Gets or sets the target framework moniker (TFM).</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.FrameworkInfo.TopLevelPackages</code></h2>
+        <p>Gets or sets the collection of top-level (directly referenced) packages.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.FrameworkInfo.TransitivePackages</code></h2>
+        <p>Gets or sets the collection of transitive (indirectly referenced) packages.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Models.PackageReference</code></h2>
+        <p>Represents a NuGet package reference with version information.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageReference.Id</code></h2>
+        <p>Gets or sets the package identifier.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageReference.RequestedVersion</code></h2>
+        <p>Gets or sets the version or version range requested in the project file.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageReference.ResolvedVersion</code></h2>
+        <p>Gets or sets the actual version resolved and used by the project.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageReference.LatestVersion</code></h2>
+        <p>Gets or sets the latest available version of the package.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageReference.IsOutdated</code></h2>
+        <p>Gets or sets a value indicating whether the resolved version is outdated.
+            This property is typically calculated by comparing ResolvedVersion and LatestVersion.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageReference.HasVulnerabilities</code></h2>
+        <p>Gets or sets a value indicating whether the package has known vulnerabilities.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageReference.Vulnerabilities</code></h2>
+        <p>Gets or sets the collection of known vulnerabilities for this package version.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageReference.IsDeprecated</code></h2>
+        <p>Gets or sets a value indicating whether the package is deprecated.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageReference.DeprecationReasons</code></h2>
+        <p>Gets or sets the collection of reasons why the package is deprecated.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageReference.Alternative</code></h2>
+        <p>Gets or sets the alternative package recommendation for deprecated packages.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Models.VulnerabilityInfo</code></h2>
+        <p>Represents vulnerability information for a package.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.VulnerabilityInfo.Severity</code></h2>
+        <p>Gets or sets the severity level of the vulnerability.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.VulnerabilityInfo.AdvisoryUrl</code></h2>
+        <p>Gets or sets the URL to the security advisory with detailed information.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Models.PackageAlternative</code></h2>
+        <p>Represents an alternative package recommendation for deprecated packages.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageAlternative.Id</code></h2>
+        <p>Gets or sets the identifier of the recommended alternative package.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageAlternative.VersionRange</code></h2>
+        <p>Gets or sets the recommended version range for the alternative package.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Models.MergedPackage</code></h2>
+        <p>Represents merged package information combining data from multiple dotnet list commands.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.MergedPackage.Id</code></h2>
+        <p>Gets or sets the package identifier.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.MergedPackage.RequestedVersion</code></h2>
+        <p>Gets or sets the version or version range requested in the project file.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.MergedPackage.ResolvedVersion</code></h2>
+        <p>Gets or sets the actual version resolved and used by the project.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.MergedPackage.LatestVersion</code></h2>
+        <p>Gets or sets the latest available version of the package.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.MergedPackage.IsOutdated</code></h2>
+        <p>Gets or sets a value indicating whether the resolved version is outdated.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.MergedPackage.IsDeprecated</code></h2>
+        <p>Gets or sets a value indicating whether the package is deprecated.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.MergedPackage.DeprecationReasons</code></h2>
+        <p>Gets or sets the collection of deprecation reasons.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.MergedPackage.Alternative</code></h2>
+        <p>Gets or sets the alternative package recommendation.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.MergedPackage.Vulnerabilities</code></h2>
+        <p>Gets or sets the collection of known vulnerabilities.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Models.PackageMetaData</code></h2>
+        <p>Represents detailed Metadata about a package fetched from the NuGet API.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageMetaData.PackageUrl</code></h2>
+        <p>Gets or sets the URL to the package&#x27;s gallery page.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageMetaData.ProjectUrl</code></h2>
+        <p>Gets or sets the URL to the package&#x27;s project or repository.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageMetaData.Description</code></h2>
+        <p>Gets or sets the package description.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageMetaData.CatalogUrl</code></h2>
+        <p>Gets or sets the URL to the NuGet API catalog entry for this package version.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageMetaData.DependencyGroups</code></h2>
+        <p>Gets or sets the collection of dependency groups organized by target framework.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageMetaData.IsDeprecated</code></h2>
+        <p>Gets or sets a value indicating whether this package is deprecated.
+            This flag is set based on information from either the dotnet CLI deprecated report
+            or the NuGet API catalog entry deprecation metadata.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageMetaData.DeprecationReasons</code></h2>
+        <p>Gets or sets the list of reasons why this package is deprecated.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageMetaData.DeprecationMessage</code></h2>
+        <p>Gets or sets the deprecation message providing details about why the package is deprecated.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageMetaData.AlternativePackage</code></h2>
+        <p>Gets or sets the alternative package recommendation from the NuGet API catalog.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Models.DependencyGroup</code></h2>
+        <p>Represents a group of dependencies for a specific target framework.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.DependencyGroup.TargetFramework</code></h2>
+        <p>Gets or sets the target framework for this dependency group.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.DependencyGroup.Dependencies</code></h2>
+        <p>Gets or sets the collection of package dependencies for this framework.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Models.PackageDependency</code></h2>
+        <p>Represents a single package dependency with version constraints.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageDependency.Id</code></h2>
+        <p>Gets or sets the identifier of the dependent package.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>P:NuGetInspectorApp.Models.PackageDependency.Range</code></h2>
+        <p>Gets or sets the version range specification for the dependency.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Application.NuGetAuditApplication</code></h2>
+        <p>Provides the main application logic for analyzing NuGet packages in .NET solutions.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Application.NuGetAuditApplication.#ctor(NuGetInspectorApp.Services.INuGetApiService,NuGetInspectorApp.Services.IPackageAnalyzer,NuGetInspectorApp.Services.IDotNetService,NuGetInspectorApp.Formatters.IReportFormatter,Microsoft.Extensions.Logging.ILogger{NuGetInspectorApp.Application.NuGetAuditApplication})</code></h2>
+        <p>Initializes a new instance of the</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Application.NuGetAuditApplication.RunAsync(NuGetInspectorApp.Configuration.CommandLineOptions,System.Threading.CancellationToken)</code></h2>
+        <p>Executes the main application workflow to analyze NuGet packages.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Application.NuGetAuditApplication.GetSafeProjectList(NuGetInspectorApp.Models.DotNetListReport,NuGetInspectorApp.Models.DotNetListReport)</code></h2>
+        <p>Gets a safe project list from available reports, preferring outdated then baseline.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Application.NuGetAuditApplication.GetSafeProjectListWithTransitive(NuGetInspectorApp.Models.DotNetListReport,NuGetInspectorApp.Models.DotNetListReport)</code></h2>
+        <p>Gets a safe project list from available reports, always preferring baseline for transitive packages.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Application.NuGetAuditApplication.FetchReportWithErrorHandling(System.String,System.String,System.String,System.Threading.CancellationToken)</code></h2>
+        <p>Fetches a package report with enhanced error handling and logging.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Application.NuGetAuditApplication.MergePackagesWithErrorHandling(NuGetInspectorApp.Models.DotNetListReport,NuGetInspectorApp.Models.DotNetListReport,NuGetInspectorApp.Models.DotNetListReport,NuGetInspectorApp.Models.DotNetListReport,NuGetInspectorApp.Configuration.CommandLineOptions,System.String,System.Threading.CancellationToken)</code></h2>
+        <p>Merges packages from multiple reports with enhanced error handling.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Application.NuGetAuditApplication.ApplyFiltersWithErrorHandling(System.Collections.Generic.Dictionary{System.String,NuGetInspectorApp.Models.MergedPackage},NuGetInspectorApp.Configuration.CommandLineOptions,System.String,System.String,System.Threading.CancellationToken)</code></h2>
+        <p>Applies user-specified filters to merged packages with enhanced error handling.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Application.NuGetAuditApplication.FetchAllPackageMetadataAsync(System.Collections.Generic.Dictionary{System.String,System.Collections.Generic.Dictionary{System.String,NuGetInspectorApp.Models.MergedPackage}},System.String,System.Threading.CancellationToken)</code></h2>
+        <p>Fetches detailed Metadata from the NuGet API for all unique packages in the merged package collection.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Services.DotNetService</code></h2>
+        <p>Provides functionality for executing dotnet CLI commands to retrieve package information.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.DotNetService.#ctor(Microsoft.Extensions.Logging.ILogger{NuGetInspectorApp.Services.DotNetService})</code></h2>
+        <p>Initializes a new instance of the</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.DotNetService.GetPackageReportAsync(System.String,System.String,System.Threading.CancellationToken)</code></h2>
+        <p>Executes a dotnet list package command and returns the parsed report.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.DotNetService.RunDotnetListJSONAsync(System.String,System.String,System.Threading.CancellationToken)</code></h2>
+        <p>Executes the dotnet list package command and returns the raw JSON output.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.DotNetService.TestBasicDotnetListAsync(System.String,System.Threading.CancellationToken)</code></h2>
+        <p>Tests if dotnet list command works without any flags - for diagnostic purposes.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Services.IDotNetService</code></h2>
+        <p>Defines the contract for executing dotnet CLI commands to retrieve package information.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.IDotNetService.GetPackageReportAsync(System.String,System.String,System.Threading.CancellationToken)</code></h2>
+        <p>Executes a dotnet list package command and returns the parsed report.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.IDotNetService.TestBasicDotnetListAsync(System.String,System.Threading.CancellationToken)</code></h2>
+        <p>Tests if basic dotnet list command functionality is working.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Services.INuGetApiService</code></h2>
+        <p>Provides methods for fetching package Metadata from the NuGet API.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.INuGetApiService.FetchPackageMetaDataAsync(System.String,System.String,System.Threading.CancellationToken)</code></h2>
+        <p>Fetches Metadata for a specific package version from the NuGet API.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Services.IPackageAnalyzer</code></h2>
+        <p>Defines the contract for merging package information from multiple dotnet list reports.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.IPackageAnalyzer.MergePackages(System.Collections.Generic.List{NuGetInspectorApp.Models.ProjectInfo},System.Collections.Generic.List{NuGetInspectorApp.Models.ProjectInfo},System.Collections.Generic.List{NuGetInspectorApp.Models.ProjectInfo},System.Collections.Generic.List{NuGetInspectorApp.Models.ProjectInfo},System.String,System.String)</code></h2>
+        <p>Merges package information from baseline, outdated, deprecated, and vulnerable package reports for a specific project and framework.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Services.NuGetApiService</code></h2>
+        <p>Implements the NuGet API service for fetching package Metadata with retry logic.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.NuGetApiService.#ctor(System.Net.Http.HttpClient,NuGetInspectorApp.Configuration.AppSettings,Microsoft.Extensions.Logging.ILogger{NuGetInspectorApp.Services.NuGetApiService})</code></h2>
+        <p>Initializes a new instance of the</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.NuGetApiService.#ctor(NuGetInspectorApp.Configuration.AppSettings,Microsoft.Extensions.Logging.ILogger{NuGetInspectorApp.Services.NuGetApiService})</code></h2>
+        <p>Alternative constructor that creates its own HttpClient with optimized settings.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.NuGetApiService.FetchPackageMetaDataAsync(System.String,System.String,System.Threading.CancellationToken)</code></h2>
+        <p><span class="no-summary">No summary available.</span></p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.NuGetApiService.ProcessCatalogEntryToString(System.Text.Json.JsonElement,System.String,System.String,System.String,System.Threading.CancellationToken)</code></h2>
+        <p>Processes a catalog entry and returns its content as a string for safe parsing.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.NuGetApiService.ExtractMetadataWithErrorHandling(NuGetInspectorApp.Models.PackageMetaData,System.Text.Json.JsonElement,System.Text.Json.JsonElement,System.String,System.String,System.String)</code></h2>
+        <p>Extracts Metadata from JSON elements with comprehensive error handling.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.NuGetApiService.ExtractDescription(NuGetInspectorApp.Models.PackageMetaData,System.Text.Json.JsonElement,System.Text.Json.JsonElement)</code></h2>
+        <p>Extracts the package description from the package metadata.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.NuGetApiService.ExtractCatalogUrl(NuGetInspectorApp.Models.PackageMetaData,System.Text.Json.JsonElement,System.Text.Json.JsonElement)</code></h2>
+        <p>Extracts the catalog URL from the package metadata.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.NuGetApiService.ExtractDeprecationInfo(NuGetInspectorApp.Models.PackageMetaData,System.Text.Json.JsonElement,System.Text.Json.JsonElement)</code></h2>
+        <p>Extracts deprecation information from the package metadata.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.NuGetApiService.TryExtractDeprecationFromElement(NuGetInspectorApp.Models.PackageMetaData,System.Text.Json.JsonElement)</code></h2>
+        <p>Attempts to extract deprecation information from a JSON element.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.NuGetApiService.ExecuteWithRetryAsync(System.Func{System.Threading.Tasks.Task{System.Net.Http.HttpResponseMessage}},System.String,System.Threading.CancellationToken,System.String)</code></h2>
+        <p>Executes an HTTP operation with exponential backoff retry logic.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.NuGetApiService.IsRetryableStatusCode(System.Net.HttpStatusCode)</code></h2>
+        <p>Determines if an HTTP status code is retryable.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.NuGetApiService.CalculateDelayWithJitter(System.TimeSpan)</code></h2>
+        <p>Calculates retry delay with optional jitter.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.NuGetApiService.ValidatePackageInput(System.String,System.String)</code></h2>
+        <p>Validates package ID and version inputs for security.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.NuGetApiService.IsValidCatalogUrl(System.String)</code></h2>
+        <p>Validates that a catalog URL is safe to fetch.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.NuGetApiService.CreateOptimizedHttpClient(NuGetInspectorApp.Configuration.AppSettings)</code></h2>
+        <p>Creates an optimized HttpClient for NuGet API requests.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.NuGetApiService.ExtractProjectUrl(NuGetInspectorApp.Models.PackageMetaData,System.Text.Json.JsonElement,System.Text.Json.JsonElement)</code></h2>
+        <p>Extracts the project URL from the package Metadata.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.NuGetApiService.ExtractDependencyGroups(NuGetInspectorApp.Models.PackageMetaData,System.Text.Json.JsonElement)</code></h2>
+        <p>Extracts dependency groups from the package Metadata.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.NuGetApiService.Dispose</code></h2>
+        <p>Releases all resources used by the</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Services.PackageAnalyzer</code></h2>
+        <p>Provides functionality for merging package information from multiple dotnet list reports.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.PackageAnalyzer.#ctor(Microsoft.Extensions.Logging.ILogger{NuGetInspectorApp.Services.PackageAnalyzer})</code></h2>
+        <p>Initializes a new instance of the</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.PackageAnalyzer.MergePackages(System.Collections.Generic.List{NuGetInspectorApp.Models.ProjectInfo},System.Collections.Generic.List{NuGetInspectorApp.Models.ProjectInfo},System.Collections.Generic.List{NuGetInspectorApp.Models.ProjectInfo},System.Collections.Generic.List{NuGetInspectorApp.Models.ProjectInfo},System.String,System.String)</code></h2>
+        <p>Merges package information from baseline and issue-specific reports.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.PackageAnalyzer.IsPackageOutdated(System.String,System.String)</code></h2>
+        <p>Determines if a package is outdated by comparing resolved and latest versions.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>M:NuGetInspectorApp.Services.PackageAnalyzer.NuGetInspectorApp#Services#IPackageAnalyzer#MergePackages(System.Collections.Generic.List{NuGetInspectorApp.Models.ProjectInfo},System.Collections.Generic.List{NuGetInspectorApp.Models.ProjectInfo},System.Collections.Generic.List{NuGetInspectorApp.Models.ProjectInfo},System.Collections.Generic.List{NuGetInspectorApp.Models.ProjectInfo},System.String,System.String)</code></h2>
+        <p>Merges package information from baseline and issue-specific reports, returning MergedPackage objects.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>T:NuGetInspectorApp.Services.ReportType</code></h2>
+        <p>Represents the different types of package analysis reports.</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>F:NuGetInspectorApp.Services.ReportType.Baseline</code></h2>
+        <p>Represents the baseline report containing all packages (no flags).</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>F:NuGetInspectorApp.Services.ReportType.Outdated</code></h2>
+        <p>Represents packages that have newer versions available (--outdated flag).</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>F:NuGetInspectorApp.Services.ReportType.Deprecated</code></h2>
+        <p>Represents packages that have been marked as deprecated (--deprecated flag).</p>
+    </div>
+    <div class='member-block'>
+        <h2><code class='member-name'>F:NuGetInspectorApp.Services.ReportType.Vulnerable</code></h2>
+        <p>Represents packages that have known security vulnerabilities (--vulnerable flag).</p>
+    </div>
+</body>
+</html>
