@@ -760,7 +760,7 @@ internal class TestableDotNetService : DotNetService
     /// <summary>
     /// Public wrapper for testing the private RunDotnetListJSONAsync method.
     /// </summary>
-    public async Task<string?> TestRunDotnetListJSONAsync(string solution, string flag, CancellationToken cancellationToken = default)
+    public Task<string?> TestRunDotnetListJSONAsync(string solution, string flag, CancellationToken cancellationToken = default)
     {
         LastUsedFlag = flag;
 
@@ -768,52 +768,52 @@ internal class TestableDotNetService : DotNetService
         if (string.IsNullOrWhiteSpace(solution))
         {
             _logger.LogError("Solution path is null or empty");
-            return null;
+            return Task.FromResult<string?>(null);
         }
 
-        if (!File.Exists(solution))
-        {
-            _logger.LogError($"Solution file does not exist: {solution}");
-            return null;
-        }
-
-        // Handle relative path conversion
+        // ✅ Add path conversion logic like the real implementation
         if (!Path.IsPathRooted(solution))
         {
             solution = Path.GetFullPath(solution);
             _logger.LogDebug($"Using absolute solution path: {solution}");
         }
 
-        // Simulate error conditions
+        if (!File.Exists(solution))
+        {
+            _logger.LogError($"Solution file does not exist: {solution}");
+            return Task.FromResult<string?>(null);
+        }
+
+        // Handle mock error scenarios
         if (_mockExitCode != 0 && !string.IsNullOrEmpty(_mockError))
         {
             if (_mockError.Contains("MSBUILD", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogError("MSBuild error detected. Ensure .NET SDK is properly installed and solution can be restored.");
-                return null;
+                return Task.FromResult<string?>(null);
             }
             if (_mockError.Contains("could not be found", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogError("File not found error. Check solution path and ensure all projects exist.");
-                return null;
+                return Task.FromResult<string?>(null);
             }
         }
 
-        // Simulate empty output
+        // Handle empty output scenario
         if (_mockOutput == "")
         {
             _logger.LogWarning($"dotnet list package {flag} returned empty output");
-            return null;
+            return Task.FromResult<string?>(null);
         }
 
         // For successful cases, return our mock output
         if (_mockExitCode == 0 && !string.IsNullOrWhiteSpace(_mockOutput))
         {
-            return _mockOutput;
+            return Task.FromResult<string?>(_mockOutput);
         }
 
         // For error cases, return null (simulating command failure)
-        return null;
+        return Task.FromResult<string?>(null);
     }
 
     /// <summary>
