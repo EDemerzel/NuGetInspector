@@ -41,7 +41,7 @@ jobs:
               run: dotnet build --no-restore --configuration ${{ env.BUILD_CONFIGURATION }}
 
             - name: Test
-              run: dotnet test --no-build --configuration ${{ env.BUILD_CONFIGURATION }} --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./TestResults
+              run: dotnet test --no-build --configuration ${{ env.BUILD_CONFIGURATION }} --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./TestResults --logger:"trx"
 
             - name: Generate Test Report
               uses: dorny/test-reporter@v1
