@@ -157,11 +157,11 @@ public class PackageAnalyzer : IPackageAnalyzer
                 // Check if this is an error message rather than a version
                 var errorMessages = new[]
                 {
-            "Not found at the sources",
-            "Unable to load",
-            "Not found",
-            "Error",
-            "Failed"
+                    "Not found at the sources",
+                    "Unable to load",
+                    "Not found",
+                    "Error",
+                    "Failed"
                 };
 
                 if (errorMessages.Any(error => incoming.LatestVersion.Contains(error, StringComparison.OrdinalIgnoreCase)))
@@ -258,33 +258,6 @@ public class PackageAnalyzer : IPackageAnalyzer
     }
 
     /// <summary>
-    /// Legacy method for backward compatibility. Use the 4-parameter overload for complete package analysis.
-    /// </summary>
-    /// <param name="outdatedProjects">Projects containing packages with newer versions available.</param>
-    /// <param name="deprecatedProjects">Projects containing deprecated packages.</param>
-    /// <param name="vulnerableProjects">Projects containing packages with security vulnerabilities.</param>
-    /// <param name="projectPath">The path of the project to analyze.</param>
-    /// <param name="framework">The target framework to analyze.</param>
-    /// <returns>A dictionary of merged package information keyed by package ID.</returns>
-    /// <remarks>
-    /// This method provides backward compatibility but only shows packages with issues.
-    /// For complete package analysis including current packages, use the 4-parameter overload.
-    /// </remarks>
-    [Obsolete("Use the 4-parameter overload with baselineProjects for complete package analysis.", false)]
-    public Dictionary<string, PackageReference> MergePackages(
-        List<ProjectInfo> outdatedProjects,
-        List<ProjectInfo> deprecatedProjects,
-        List<ProjectInfo> vulnerableProjects,
-        string projectPath,
-        string framework)
-    {
-        _logger.LogWarning("Using legacy MergePackages method. Consider upgrading to the 4-parameter overload for complete package analysis.");
-
-        // Call the new method with empty baseline to maintain backward compatibility
-        return MergePackages(new List<ProjectInfo>(), outdatedProjects, deprecatedProjects, vulnerableProjects, projectPath, framework);
-    }
-
-    /// <summary>
     /// Determines if a package is outdated by comparing resolved and latest versions.
     /// </summary>
     /// <param name="resolvedVersion">The currently resolved version of the package.</param>
@@ -334,46 +307,6 @@ public class PackageAnalyzer : IPackageAnalyzer
         string framework)
     {
         var packageReferenceResult = MergePackages(baselineProjects, outdatedProjects, deprecatedProjects, vulnerableProjects, projectPath, framework);
-        var mergedPackageResult = new Dictionary<string, MergedPackage>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var entry in packageReferenceResult)
-        {
-            var pr = entry.Value;
-            mergedPackageResult[entry.Key] = new MergedPackage
-            {
-                Id = pr.Id,
-                RequestedVersion = pr.RequestedVersion,
-                ResolvedVersion = pr.ResolvedVersion,
-                LatestVersion = pr.LatestVersion,
-                IsOutdated = pr.IsOutdated,
-                IsDeprecated = pr.IsDeprecated,
-                DeprecationReasons = pr.DeprecationReasons?.ToList() ?? new List<string>(),
-                Alternative = pr.Alternative != null ? new PackageAlternative
-                {
-                    Id = pr.Alternative.Id,
-                    VersionRange = pr.Alternative.VersionRange
-                } : null,
-                Vulnerabilities = pr.Vulnerabilities?.Select(v => new VulnerabilityInfo
-                {
-                    Severity = v.Severity,
-                    AdvisoryUrl = v.AdvisoryUrl
-                }).ToList() ?? new List<VulnerabilityInfo>()
-            };
-        }
-        return mergedPackageResult;
-    }
-
-    /// <summary>
-    /// Legacy interface implementation for backward compatibility.
-    /// </summary>
-    Dictionary<string, MergedPackage> IPackageAnalyzer.MergePackages(
-        List<ProjectInfo> outdatedProjects,
-        List<ProjectInfo> deprecatedProjects,
-        List<ProjectInfo> vulnerableProjects,
-        string projectPath,
-        string framework)
-    {
-        var packageReferenceResult = MergePackages(outdatedProjects, deprecatedProjects, vulnerableProjects, projectPath, framework);
         var mergedPackageResult = new Dictionary<string, MergedPackage>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var entry in packageReferenceResult)

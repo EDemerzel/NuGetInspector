@@ -1,8 +1,8 @@
-# How to Read NuGet Inspector Console Output
+# How to Read NuGet Inspector Inspection Log
 
 ## 📋 Overview
 
-The NuGet Inspector console output provides a comprehensive analysis of your .NET solution's package dependencies. This guide explains how to interpret each section of the report.
+The NuGet Inspector inspection log provides a comprehensive analysis of your .NET solution's package dependencies. This guide explains how to interpret each section of the report.
 
 ## 🏗️ Report Structure
 
@@ -18,11 +18,11 @@ The NuGet Inspector console output provides a comprehensive analysis of your .NE
 ### Framework Section
 
 ```shell
-Framework: net462
+Framework: net8.0
 ```
 
 - Indicates the target framework for this analysis
-- Multi-targeting projects show separate sections for each framework (e.g., `net462`, `netstandard2.0`)
+- Multi-targeting projects show separate sections for each framework (e.g., `net8.0`, `netstandard2.0`)
 
 ## 📦 Package Information
 
@@ -31,21 +31,25 @@ Each package entry contains detailed metadata:
 ### Basic Package Info
 
 ```shell
-• Autofac (5.2.0)
-    Gallery URL: https://www.nuget.org/packages/Autofac/5.2.0
-    Project URL: https://autofac.org/
+• Microsoft.Data.SqlClient (4.1.1)
+    Gallery URL: https://www.nuget.org/packages/Microsoft.Data.SqlClient/4.1.1
+    Project URL: https://aka.ms/sqlclientproject
+    Catalog URL: https://api.nuget.org/v3/catalog0/data/2024.01.09.20.50.29/microsoft.data.sqlclient.4.1.1.json
+    Description: Provides the data provider for SQL Server. These classes provide access to versions of SQL Server...
 ```
 
 - **Package Name**: The NuGet package identifier
 - **Current Version**: Version currently referenced in your project
 - **Gallery URL**: Direct link to the package on NuGet.org
 - **Project URL**: Link to the package's official website/repository
+- **Catalog URL**: Direct link to the NuGet API catalog entry for detailed metadata
+- **Description**: Package description (truncated at 100 characters with cleaned formatting)
 
 ### Version Status
 
 ```shell
-    Requested: 5.2.0
-    Latest:    8.3.0  (Outdated)
+    Requested: 4.1.1
+    Latest:    6.0.2  (Outdated)
 ```
 
 - **Requested**: Version specified in your project file
@@ -58,35 +62,60 @@ Each package entry contains detailed metadata:
 ### Package Health Status
 
 ```shell
-    Deprecated: No
+    Deprecated: Yes (CriticalBugs)
+      Message: An important security issue exists in this version of the package. It is recommended to update to a newer version.
+https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-0056
     Vulnerabilities: None
 ```
 
 - **Deprecated**: Indicates if the package is marked as deprecated
   - `No`: Package is actively maintained
-  - `Yes`: Package is deprecated (includes alternative package suggestions)
+  - `Yes`: Package is deprecated with reason(s) in parentheses
+  - **Deprecation Message**: Detailed explanation from the NuGet API
+  - **Alternative Packages**: Shows recommended replacements when available
 - **Vulnerabilities**: Lists known security issues
   - `None`: No known vulnerabilities
   - Shows severity levels (Low, Medium, High, Critical) with advisory URLs
+
+### Enhanced Deprecation Information
+
+```shell
+    Deprecated: Yes (Other, Legacy)
+      Message: This package has been deprecated as part of the .NET Package Deprecation effort. You can learn more about it from https://github.com/dotnet/announcements/issues/217
+      Alternative: Asp.Versioning.Mvc *
+      CLI Alternative: System.Text.Json >=8.0.0
+```
+
+- **API Alternative**: Recommended replacement from NuGet API catalog
+- **CLI Alternative**: Alternative suggested by dotnet CLI (shown if different from API)
+- **Deprecation Reasons**: Common values include:
+  - `CriticalBugs`: Package has critical security or functional issues
+  - `Legacy`: Package is outdated and no longer maintained
+  - `Other`: Package is deprecated for other reasons
 
 ### Framework Dependencies
 
 ```shell
     Supported frameworks & their dependencies:
-      • .NETFramework4.6.1
-          - Microsoft.Bcl.AsyncInterfaces [1.1.0, )
+      • .NETFramework4.6.2
+          - Microsoft.Extensions.Caching.Abstractions [9.0.6, )
+          - Microsoft.Extensions.DependencyInjection.Abstractions [9.0.6, )
+      • net8.0
+          - Microsoft.Extensions.Caching.Abstractions [9.0.6, )
+          - Microsoft.Extensions.DependencyInjection.Abstractions [9.0.6, )
       • .NETStandard2.0
-          - Microsoft.Bcl.AsyncInterfaces [1.1.0, )
-      • .NETStandard2.1
-          (none)
+          - Microsoft.Extensions.Caching.Abstractions [9.0.6, )
+          - Microsoft.Extensions.DependencyInjection.Abstractions [9.0.6, )
+      • (none detected)
 ```
 
 - Lists all frameworks this package supports
 - Shows dependencies for each framework
 - Version ranges use NuGet notation:
-  - `[1.1.0, )`: Version 1.1.0 or higher
+  - `[9.0.6, )`: Version 9.0.6 or higher
   - `[2.0.0, 3.0.0)`: Version 2.0.0 up to (but not including) 3.0.0
   - `(none)`: No dependencies for this framework
+- `(none detected)`: May indicate network issues or packages without NuGet API metadata
 
 ## 🔗 Transitive Packages Section
 
@@ -95,11 +124,13 @@ Transitive packages:
  • Azure.Core (1.6.0)
  • Azure.Identity (1.3.0)
  • Microsoft.Extensions.DependencyInjection (7.0.0)
+ • System.Xml.ReaderWriter (4.3.0)
 ```
 
 - Lists packages automatically included as dependencies
 - These are not directly referenced in your project files
 - Brought in by your direct package references
+- Shows `(none)` if no transitive dependencies exist
 
 ## 🚨 Status Indicators Guide
 
@@ -115,12 +146,16 @@ Transitive packages:
 ### Deprecation Warnings
 
 ```shell
-    Deprecated: Yes (Legacy package)
-      Alternative: System.Text.Json >=6.0.0
+    Deprecated: Yes (CriticalBugs)
+      Message: An important security issue exists in this version of the package. It is recommended to update to a newer version.
+https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-0056
+      Alternative: Microsoft.Data.SqlClient >=5.0.0
 ```
 
-- Shows recommended replacement packages
+- Shows recommended replacement packages from both API and CLI sources
 - Provides minimum version requirements for alternatives
+- Includes detailed deprecation messages with security advisories
+- Links to vulnerability information and migration guides
 
 ### Vulnerability Alerts
 
@@ -141,15 +176,16 @@ Transitive packages:
 Look for:
 
 - ❌ `Vulnerabilities:` with High/Critical severity
-- ⚠️ `Deprecated: Yes` packages
+- ⚠️ `Deprecated: Yes` packages with `CriticalBugs` reason
 - 📅 Very old `(Outdated)` packages (>2 major versions behind)
 
 ### 2. Maintenance Planning
 
 Focus on:
 
-- Packages with many available updates
-- Deprecated packages needing migration
+- Packages with detailed deprecation messages
+- Deprecated packages with clear alternative recommendations
+- Packages showing both API and CLI alternatives
 - Transitive dependencies that might need direct references
 
 ### 3. Framework Compatibility
@@ -158,7 +194,7 @@ Check:
 
 - Framework-specific dependencies
 - Version conflicts between different target frameworks
-- Missing dependencies for newer frameworks
+- Missing dependencies showing `(none detected)`
 
 ## 🔍 Command Line Filtering
 
@@ -194,7 +230,7 @@ Address any HIGH or CRITICAL vulnerabilities immediately.
 dotnet run -- YourSolution.sln --only-deprecated
 ```
 
-Plan migration paths for deprecated packages.
+Plan migration paths for deprecated packages, especially those with `CriticalBugs`.
 
 ### Step 3: Review Updates
 
@@ -210,24 +246,27 @@ Prioritize major version updates and security patches.
 dotnet run -- YourSolution.sln --verbose
 ```
 
-Review complete dependency tree and transitive packages.
+Review complete dependency tree and catalog URLs for detailed investigation.
 
 ## 📝 Best Practices
 
 ### 🔴 Immediate Action Required
 
 - **High/Critical Vulnerabilities**: Update within 24-48 hours
-- **Deprecated Packages**: Create migration plan within sprint
+- **Deprecated Packages with CriticalBugs**: Update immediately
+- **Packages with Security Advisory Links**: Follow migration guidance
 
 ### 🟡 Plan for Next Sprint
 
 - **Medium Vulnerabilities**: Update in next release cycle
+- **Legacy Deprecated Packages**: Create migration plan with alternative packages
 - **Major Version Updates**: Test thoroughly in development
 
 ### 🟢 Monitor
 
 - **Minor Updates**: Consider for maintenance releases
 - **Transitive Dependencies**: Review for optimization opportunities
+- **Package Descriptions**: Use catalog URLs for detailed investigation
 
 ## 🛠️ Troubleshooting Output
 
@@ -254,7 +293,7 @@ Supported frameworks & their dependencies:
 
 **Indicators:**
 
-- Missing project URLs
+- Missing project URLs, catalog URLs, or descriptions
 - Empty dependency lists
 - Generic error messages
 
@@ -287,7 +326,7 @@ dotnet run -- solution.sln --output sprint-analysis.txt
 ### Release Preparation
 
 ```bash
-# Comprehensive review
+# Comprehensive review with enhanced metadata
 dotnet run -- solution.sln --verbose --output release-audit.txt
 ```
 

@@ -374,11 +374,85 @@ public class PackageMetaData
     public string? ProjectUrl { get; set; }
 
     /// <summary>
+    /// Gets or sets the package description.
+    /// </summary>
+    /// <value>A human-readable description of the package's functionality and purpose, or <c>null</c> if not provided.</value>
+    /// <example>Provides a default set of APIs for commonly used functionality that higher level libraries can depend on.</example>
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Gets or sets the URL to the NuGet API catalog entry for this package version.
+    /// </summary>
+    /// <value>The direct link to the catalog entry containing detailed package metadata, or <c>null</c> if not available.</value>
+    /// <example>https://api.nuget.org/v3/catalog0/data/2023.10.19.14.59.09/microsoft.aspnetcore.mvc.versioning.5.1.0.json</example>
+    [JsonPropertyName("catalogUrl")]
+    public string? CatalogUrl { get; set; }
+
+    /// <summary>
     /// Gets or sets the collection of dependency groups organized by target framework.
     /// </summary>
     /// <value>A list of <see cref="DependencyGroup"/> objects showing dependencies for each supported framework.</value>
     [JsonPropertyName("dependencyGroups")]
     public List<DependencyGroup> DependencyGroups { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets a value indicating whether this package is deprecated.
+    /// This flag is set based on information from either the dotnet CLI deprecated report
+    /// or the NuGet API catalog entry deprecation metadata.
+    /// </summary>
+    /// <value>
+    /// <c>true</c> if the package is deprecated; otherwise, <c>false</c>.
+    /// </value>
+    /// <remarks>
+    /// Deprecated packages may have security vulnerabilities, critical bugs, or have been superseded
+    /// by newer packages. Check <see cref="DeprecationReasons"/> and <see cref="DeprecationMessage"/>
+    /// for specific deprecation details.
+    /// </remarks>
+    public bool IsDeprecated { get; set; }
+
+    /// <summary>
+    /// Gets or sets the list of reasons why this package is deprecated.
+    /// </summary>
+    /// <value>
+    /// A list of deprecation reasons such as "CriticalBugs", "Legacy", "Other", etc.
+    /// May be <c>null</c> if no specific reasons are provided.
+    /// </value>
+    /// <remarks>
+    /// Common deprecation reasons include:
+    /// <list type="bullet">
+    /// <item><description>CriticalBugs - Package has critical security or functional issues</description></item>
+    /// <item><description>Legacy - Package is outdated and no longer maintained</description></item>
+    /// <item><description>Other - Package is deprecated for other reasons</description></item>
+    /// </list>
+    /// </remarks>
+    public List<string>? DeprecationReasons { get; set; }
+
+    /// <summary>
+    /// Gets or sets the deprecation message providing details about why the package is deprecated.
+    /// </summary>
+    /// <value>
+    /// A human-readable message explaining the deprecation, potentially including security advisories
+    /// or migration guidance. May be <c>null</c> if no message is provided.
+    /// </value>
+    /// <remarks>
+    /// This message often contains important security information, CVE references, or links to
+    /// updated packages that should be used instead.
+    /// </remarks>
+    public string? DeprecationMessage { get; set; }
+
+    /// <summary>
+    /// Gets or sets the alternative package recommendation from the NuGet API catalog.
+    /// </summary>
+    /// <value>
+    /// The suggested replacement package from the API catalog, or <c>null</c> if none is specified.
+    /// This is separate from CLI-based alternative information and provides API-sourced recommendations.
+    /// </value>
+    /// <remarks>
+    /// This alternative package information comes from the NuGet API catalog's deprecation metadata
+    /// and may differ from alternatives provided by the dotnet CLI deprecated report.
+    /// </remarks>
+    public PackageAlternative? AlternativePackage { get; set; }
 }
 
 /// <summary>

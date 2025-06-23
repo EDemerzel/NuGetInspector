@@ -216,7 +216,6 @@ public class NuGetApiService : INuGetApiService, IDisposable
             {
                 _logger.LogDebug("[{OperationId}] Fetching catalog entry from URL: {CatalogUrl}", operationId, catalogUrl);
 
-                // Validate the catalog URL for security
                 if (!IsValidCatalogUrl(catalogUrl))
                 {
                     _logger.LogWarning("[{OperationId}] Invalid catalog URL for {PackageId} {Version}: {Url}. Skipping catalog fetch.",
@@ -237,6 +236,9 @@ public class NuGetApiService : INuGetApiService, IDisposable
                         var catalogContent = await catalogRes.Content.ReadAsStringAsync(cancellationToken);
                         _logger.LogTrace("[{OperationId}] Successfully fetched catalog entry from URL for {PackageId} {Version}. Size: {Size} characters",
                             operationId, id, version, catalogContent.Length);
+
+                        // Store the catalog URL that we successfully fetched from
+                        // This will be used later in ExtractCatalogUrl
                         return catalogContent;
                     }
                     else
@@ -290,6 +292,45 @@ public class NuGetApiService : INuGetApiService, IDisposable
                 operationId, id, version, ex.Message);
         }
 
+        // Extract description
+        try
+        {
+            ExtractDescription(meta, details, root);
+            _logger.LogTrace("[{OperationId}] Extracted description for {PackageId} {Version}: Length={Length}",
+                operationId, id, version, meta.Description?.Length ?? 0);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[{OperationId}] Error extracting description for {PackageId} {Version}: {Error}",
+                operationId, id, version, ex.Message);
+        }
+
+        // Extract catalog URL (if available from the registration response)
+        try
+        {
+            ExtractCatalogUrl(meta, details, root);
+            _logger.LogTrace("[{OperationId}] Extracted catalog URL for {PackageId} {Version}: {CatalogUrl}",
+                operationId, id, version, meta.CatalogUrl ?? "none");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[{OperationId}] Error extracting catalog URL for {PackageId} {Version}: {Error}",
+                operationId, id, version, ex.Message);
+        }
+
+        // Extract deprecation information
+        try
+        {
+            ExtractDeprecationInfo(meta, details, root);
+            _logger.LogTrace("[{OperationId}] Extracted deprecation info for {PackageId} {Version}: IsDeprecated={IsDeprecated}, Reasons={ReasonCount}",
+                operationId, id, version, meta.IsDeprecated, meta.DeprecationReasons?.Count ?? 0);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[{OperationId}] Error extracting deprecation info for {PackageId} {Version}: {Error}",
+                operationId, id, version, ex.Message);
+        }
+
         // Extract dependency groups
         try
         {
@@ -297,30 +338,197 @@ public class NuGetApiService : INuGetApiService, IDisposable
             var depCount = meta.DependencyGroups?.Sum(g => g.Dependencies?.Count ?? 0) ?? 0;
             _logger.LogTrace("[{OperationId}] Extracted {DependencyCount} dependencies across {GroupCount} groups for {PackageId} {Version}",
                 operationId, depCount, meta.DependencyGroups?.Count ?? 0, id, version);
-
-            // Additional diagnostic logging for Microsoft.Data.SqlClient
-            if (id.Equals("Microsoft.Data.SqlClient", StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogDebug("[{OperationId}] Special logging for Microsoft.Data.SqlClient: Found {GroupCount} dependency groups",
-                    operationId, meta.DependencyGroups?.Count ?? 0);
-
-                if (meta.DependencyGroups?.Any() == true)
-                {
-                    foreach (var group in meta.DependencyGroups)
-                    {
-                        _logger.LogDebug("[{OperationId}] Dependency group: Framework={Framework}, Dependencies={DepCount}",
-                            operationId, group.TargetFramework, group.Dependencies?.Count ?? 0);
-                    }
-                }
-            }
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "[{OperationId}] Error extracting dependency groups for {PackageId} {Version}: {Error}",
                 operationId, id, version, ex.Message);
-            // Ensure DependencyGroups is not null even if extraction fails
             meta.DependencyGroups ??= new List<DependencyGroup>();
         }
+    }
+
+    /// <summary>
+    /// Extracts the package description from the package metadata.
+    /// </summary>
+    /// <param name="meta">The package metadata to update.</param>
+    /// <param name="details">The details JSON element (catalog entry).</param>
+    /// <param name="root">The root JSON element (registration).</param>
+    private static void ExtractDescription(PackageMetaData meta, JsonElement details, JsonElement root)
+    {
+        // Try details first (catalog entry) - this usually has the most complete information
+        if (details.TryGetProperty("description", out var desc) && desc.ValueKind == JsonValueKind.String)
+        {
+            var description = desc.GetString();
+            if (!string.IsNullOrWhiteSpace(description))
+            {
+                meta.Description = description.Trim();
+                return;
+            }
+        }
+
+        // Fallback to root element (registration)
+        if (root.TryGetProperty("description", out desc) && desc.ValueKind == JsonValueKind.String)
+        {
+            var description = desc.GetString();
+            if (!string.IsNullOrWhiteSpace(description))
+            {
+                meta.Description = description.Trim();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Extracts the catalog URL from the package metadata.
+    /// </summary>
+    /// <param name="meta">The package metadata to update.</param>
+    /// <param name="details">The details JSON element (catalog entry).</param>
+    /// <param name="root">The root JSON element (registration).</param>
+    private static void ExtractCatalogUrl(PackageMetaData meta, JsonElement details, JsonElement root)
+    {
+        // Try to get catalog URL from root level first
+        if (root.TryGetProperty("catalogEntry", out var catalogEntry))
+        {
+            if (catalogEntry.ValueKind == JsonValueKind.String)
+            {
+                var catalogUrl = catalogEntry.GetString();
+                if (!string.IsNullOrWhiteSpace(catalogUrl) && IsValidCatalogUrl(catalogUrl))
+                {
+                    meta.CatalogUrl = catalogUrl;
+                    return;
+                }
+            }
+        }
+
+        // Try to find catalog URL in items array
+        if (root.TryGetProperty("items", out var itemsArray) && itemsArray.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in itemsArray.EnumerateArray())
+            {
+                if (item.TryGetProperty("catalogEntry", out catalogEntry))
+                {
+                    if (catalogEntry.ValueKind == JsonValueKind.String)
+                    {
+                        var catalogUrl = catalogEntry.GetString();
+                        if (!string.IsNullOrWhiteSpace(catalogUrl) && IsValidCatalogUrl(catalogUrl))
+                        {
+                            meta.CatalogUrl = catalogUrl;
+                            return;
+                        }
+                    }
+                    // If catalogEntry is an object, we might be able to extract an @id
+                    else if (catalogEntry.ValueKind == JsonValueKind.Object &&
+                             catalogEntry.TryGetProperty("@id", out var idElement) &&
+                             idElement.ValueKind == JsonValueKind.String)
+                    {
+                        var catalogUrl = idElement.GetString();
+                        if (!string.IsNullOrWhiteSpace(catalogUrl) && IsValidCatalogUrl(catalogUrl))
+                        {
+                            meta.CatalogUrl = catalogUrl;
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        // If catalog entry details is from a URL, try to extract that URL
+        if (details.TryGetProperty("@id", out var detailsId) && detailsId.ValueKind == JsonValueKind.String)
+        {
+            var catalogUrl = detailsId.GetString();
+            if (!string.IsNullOrWhiteSpace(catalogUrl) && IsValidCatalogUrl(catalogUrl))
+            {
+                meta.CatalogUrl = catalogUrl;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Extracts deprecation information from the package metadata.
+    /// </summary>
+    /// <param name="meta">The package metadata to update.</param>
+    /// <param name="details">The details JSON element (catalog entry).</param>
+    /// <param name="root">The root JSON element (registration).</param>
+    private static void ExtractDeprecationInfo(PackageMetaData meta, JsonElement details, JsonElement root)
+    {
+        // Try details first (catalog entry) - this is where deprecation info usually is
+        if (TryExtractDeprecationFromElement(meta, details))
+        {
+            return; // Found in catalog entry
+        }
+
+        // Fallback to root element (registration)
+        TryExtractDeprecationFromElement(meta, root);
+    }
+
+    /// <summary>
+    /// Attempts to extract deprecation information from a JSON element.
+    /// </summary>
+    /// <param name="meta">The package metadata to update.</param>
+    /// <param name="element">The JSON element to extract from.</param>
+    /// <returns>True if deprecation information was found and extracted.</returns>
+    private static bool TryExtractDeprecationFromElement(PackageMetaData meta, JsonElement element)
+    {
+        if (!element.TryGetProperty("deprecation", out var deprecationElement))
+            return false;
+
+        meta.IsDeprecated = true;
+
+        // Extract deprecation message
+        if (deprecationElement.TryGetProperty("message", out var messageElement) &&
+            messageElement.ValueKind == JsonValueKind.String)
+        {
+            meta.DeprecationMessage = messageElement.GetString();
+        }
+
+        // Extract deprecation reasons
+        if (deprecationElement.TryGetProperty("reasons", out var reasonsElement) &&
+            reasonsElement.ValueKind == JsonValueKind.Array)
+        {
+            var reasons = new List<string>();
+            foreach (var reasonElement in reasonsElement.EnumerateArray())
+            {
+                if (reasonElement.ValueKind == JsonValueKind.String)
+                {
+                    var reason = reasonElement.GetString();
+                    if (!string.IsNullOrEmpty(reason))
+                    {
+                        reasons.Add(reason);
+                    }
+                }
+            }
+            meta.DeprecationReasons = reasons;
+        }
+
+        // Extract alternate package information from API catalog
+        if (deprecationElement.TryGetProperty("alternatePackage", out var alternateElement))
+        {
+            var alternateId = string.Empty;
+            var alternateRange = string.Empty;
+
+            if (alternateElement.TryGetProperty("id", out var idElement) &&
+                idElement.ValueKind == JsonValueKind.String)
+            {
+                alternateId = idElement.GetString() ?? string.Empty;
+            }
+
+            if (alternateElement.TryGetProperty("range", out var rangeElement) &&
+                rangeElement.ValueKind == JsonValueKind.String)
+            {
+                alternateRange = rangeElement.GetString() ?? "*";
+            }
+
+            // Create the alternative package info if we have a valid ID
+            if (!string.IsNullOrEmpty(alternateId))
+            {
+                meta.AlternativePackage = new PackageAlternative
+                {
+                    Id = alternateId,
+                    VersionRange = alternateRange
+                };
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

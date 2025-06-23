@@ -365,31 +365,25 @@ public class NuGetAuditApplication
         {
             var originalCount = merged.Count;
 
-            if (options.OnlyOutdated)
+            // Apply filtering if any filters are enabled
+            if (options.OnlyOutdated || options.OnlyDeprecated || options.OnlyVulnerable)
             {
-                merged = merged.Where(kvp => kvp.Value.IsOutdated).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-                _logger.LogTrace("[{OperationId}] Applied outdated filter to {ProjectFramework}: {OriginalCount} -> {FilteredCount}",
-                    operationId, projectFrameworkKey, originalCount, merged.Count);
-            }
+                // Use OR logic - include packages that match ANY of the enabled filters
+                merged = merged.Where(kvp =>
+                {
+                    var package = kvp.Value;
 
-            if (options.OnlyDeprecated)
-            {
-                merged = merged.Where(kvp => kvp.Value.IsDeprecated).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-                _logger.LogTrace("[{OperationId}] Applied deprecated filter to {ProjectFramework}: {FilteredCount} packages remain",
-                    operationId, projectFrameworkKey, merged.Count);
-            }
+                    // Check each filter condition
+                    var matchesOutdated = options.OnlyOutdated && package.IsOutdated;
+                    var matchesDeprecated = options.OnlyDeprecated && package.IsDeprecated;
+                    var matchesVulnerable = options.OnlyVulnerable && (package.Vulnerabilities?.Count > 0);
 
-            if (options.OnlyVulnerable)
-            {
-                // Enhanced null-safe vulnerability check
-                merged = merged.Where(kvp => kvp.Value.Vulnerabilities?.Count > 0).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-                _logger.LogTrace("[{OperationId}] Applied vulnerable filter to {ProjectFramework}: {FilteredCount} packages remain",
-                    operationId, projectFrameworkKey, merged.Count);
-            }
+                    // Include package if it matches ANY enabled filter (OR logic)
+                    return matchesOutdated || matchesDeprecated || matchesVulnerable;
 
-            if (originalCount != merged.Count)
-            {
-                _logger.LogDebug("[{OperationId}] Filters applied to {ProjectFramework}: {OriginalCount} -> {FinalCount} packages",
+                }).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+                _logger.LogTrace("[{OperationId}] Applied filters to {ProjectFramework}: {OriginalCount} -> {FilteredCount}",
                     operationId, projectFrameworkKey, originalCount, merged.Count);
             }
 

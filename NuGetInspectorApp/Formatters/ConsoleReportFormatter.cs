@@ -58,6 +58,9 @@ public class ConsoleReportFormatter : IReportFormatter
     /// <param name="sb">The StringBuilder to append formatted output to.</param>
     /// <param name="merged">The collection of merged packages to format.</param>
     /// <param name="packageMetaData">The package Metadata dictionary for additional details.</param>
+    /// <summary>
+    /// Formats direct package dependencies for the console output.
+    /// </summary>
     private static void FormatDirectPackages(
         StringBuilder sb,
         Dictionary<string, MergedPackage> merged,
@@ -68,15 +71,32 @@ public class ConsoleReportFormatter : IReportFormatter
             sb.AppendLine($"• {pkg.Id} ({pkg.ResolvedVersion})");
 
             var metaKey = $"{pkg.Id}|{pkg.ResolvedVersion}";
-            if (packageMetaData.TryGetValue(metaKey, out var meta))
+            PackageMetaData? meta = null;
+            packageMetaData.TryGetValue(metaKey, out meta);
+
+            if (meta != null)
             {
                 sb.AppendLine($"    Gallery URL: {meta.PackageUrl}");
+
                 if (!string.IsNullOrEmpty(meta.ProjectUrl))
                     sb.AppendLine($"    Project URL: {meta.ProjectUrl}");
+
+                if (!string.IsNullOrEmpty(meta.CatalogUrl))
+                    sb.AppendLine($"    Catalog URL: {meta.CatalogUrl}");
+
+                if (!string.IsNullOrEmpty(meta.Description))
+                {
+                    // Clean and truncate description for console readability
+                    var cleanDescription = CleanDescriptionForConsole(meta.Description);
+                    var description = cleanDescription.Length > 100
+                        ? cleanDescription.Substring(0, 97) + "..."
+                        : cleanDescription;
+                    sb.AppendLine($"    Description: {description}");
+                }
             }
 
             FormatVersionInformation(sb, pkg);
-            FormatDeprecationInformation(sb, pkg);
+            FormatDeprecationInformation(sb, pkg, meta);
             FormatVulnerabilityInformation(sb, pkg);
             FormatDependencyInformation(sb, pkg, packageMetaData, metaKey);
 
@@ -84,6 +104,32 @@ public class ConsoleReportFormatter : IReportFormatter
         }
     }
 
+    /// <summary>
+    /// Cleans a package description for console output by removing problematic characters.
+    /// </summary>
+    /// <param name="description">The raw description text.</param>
+    /// <returns>A cleaned description suitable for single-line console output.</returns>
+    private static string CleanDescriptionForConsole(string description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+            return string.Empty;
+
+        // Remove all types of line breaks and normalize whitespace
+        var cleaned = description
+            .Replace("\r\n", " ")      // Windows line endings
+            .Replace("\r", " ")        // Mac line endings
+            .Replace("\n", " ")        // Unix line endings
+            .Replace("\t", " ")        // Tabs
+            .Replace("  ", " ");       // Double spaces
+
+        // Continue removing multiple spaces until none remain
+        while (cleaned.Contains("  "))
+        {
+            cleaned = cleaned.Replace("  ", " ");
+        }
+
+        return cleaned.Trim();
+    }
 
     /// <summary>
     /// Formats version information for a package.
@@ -129,11 +175,67 @@ public class ConsoleReportFormatter : IReportFormatter
     /// </summary>
     /// <param name="sb">The StringBuilder to append formatted output to.</param>
     /// <param name="pkg">The package to format deprecation information for.</param>
-    private static void FormatDeprecationInformation(StringBuilder sb, MergedPackage pkg)
+    /// <param name="meta">Optional package metadata from NuGet API.</param>
+    private static void FormatDeprecationInformation(StringBuilder sb, MergedPackage pkg, PackageMetaData? meta = null)
     {
-        sb.AppendLine($"    Deprecated: {(pkg.IsDeprecated ? $"Yes ({string.Join(", ", pkg.DeprecationReasons)})" : "No")}");
-        if (pkg.Alternative != null)
-            sb.AppendLine($"      Alternative: {pkg.Alternative.Id} {pkg.Alternative.VersionRange}");
+        // Check both sources: dotnet CLI report and NuGet API metadata
+        var isDeprecated = pkg.IsDeprecated || (meta?.IsDeprecated == true);
+
+        if (isDeprecated)
+        {
+            // Combine reasons from both sources
+            var allReasons = new List<string>();
+
+            if (pkg.DeprecationReasons?.Any() == true)
+                allReasons.AddRange(pkg.DeprecationReasons);
+
+            if (meta?.DeprecationReasons?.Any() == true)
+                allReasons.AddRange(meta.DeprecationReasons.Where(r => !allReasons.Contains(r)));
+
+            if (allReasons.Any())
+            {
+                sb.AppendLine($"    Deprecated: Yes ({string.Join(", ", allReasons)})");
+            }
+            else
+            {
+                sb.AppendLine($"    Deprecated: Yes");
+            }
+
+            // Show deprecation message if available from API
+            if (!string.IsNullOrEmpty(meta?.DeprecationMessage))
+            {
+                sb.AppendLine($"      Message: {meta.DeprecationMessage}");
+            }
+
+            // Show alternatives from both sources, preferring API catalog data
+            var alternativeShown = false;
+
+            // First, show alternative from API catalog (more authoritative)
+            if (meta?.AlternativePackage != null)
+            {
+                sb.AppendLine($"      Alternative: {meta.AlternativePackage.Id} {meta.AlternativePackage.VersionRange ?? "*"}");
+                alternativeShown = true;
+            }
+
+            // Then show CLI alternative if different from API alternative
+            if (pkg.Alternative != null)
+            {
+                var cliAlternative = $"{pkg.Alternative.Id} {pkg.Alternative.VersionRange}";
+                var apiAlternative = meta?.AlternativePackage != null ?
+                    $"{meta.AlternativePackage.Id} {meta.AlternativePackage.VersionRange ?? "*"}" : null;
+
+                // Only show CLI alternative if it's different from API alternative
+                if (!alternativeShown || !string.Equals(cliAlternative, apiAlternative, StringComparison.OrdinalIgnoreCase))
+                {
+                    var prefix = alternativeShown ? "      CLI Alternative: " : "      Alternative: ";
+                    sb.AppendLine($"{prefix}{pkg.Alternative.Id} {pkg.Alternative.VersionRange}");
+                }
+            }
+        }
+        else
+        {
+            sb.AppendLine($"    Deprecated: No");
+        }
     }
 
     /// <summary>

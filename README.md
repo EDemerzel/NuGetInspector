@@ -27,8 +27,9 @@ NuGet Inspector helps you identify outdated, deprecated, and vulnerable packages
 
 - **Outdated Detection**: Identify packages with newer versions available
 - **Security Scanning**: Find packages with known vulnerabilities
-- **Deprecation Alerts**: Discover deprecated packages with alternative suggestions
+- **Deprecation Alerts**: Discover deprecated packages with alternative suggestions from both CLI and API sources
 - **Dependency Mapping**: Visualize complete dependency trees including transitive packages
+- **Enhanced Metadata**: Package descriptions, catalog URLs, and project URLs from NuGet API
 
 ### 🚀 **Performance & Reliability**
 
@@ -36,6 +37,7 @@ NuGet Inspector helps you identify outdated, deprecated, and vulnerable packages
 - **Smart Retry Logic**: Exponential backoff with jitter for network resilience
 - **Rate Limiting**: Configurable concurrent request limits (1-20 requests)
 - **Robust Error Handling**: Graceful handling of network issues and API failures
+- **Baseline Report Integration**: Comprehensive package detection including current packages
 
 ### 🎯 **Flexible Filtering & Output**
 
@@ -43,6 +45,7 @@ NuGet Inspector helps you identify outdated, deprecated, and vulnerable packages
 - **Console Output**: Rich, human-readable reports with detailed package information
 - **File Export**: Save reports to files for documentation and CI/CD integration
 - **Verbose Logging**: Detailed diagnostics for troubleshooting
+- **Enhanced Deprecation Info**: Shows both API catalog and CLI-based alternatives
 
 ### 🛡️ **Security & Validation**
 
@@ -238,6 +241,8 @@ Framework: net9.0
 • Microsoft.AspNetCore.App (9.0.0)
     Gallery URL: https://www.nuget.org/packages/Microsoft.AspNetCore.App/9.0.0
     Project URL: https://asp.net
+    Catalog URL: https://api.nuget.org/v3/catalog0/data/2024.11.08.18.23.45/microsoft.aspnetcore.app.9.0.0.json
+    Description: Provides a default set of APIs for building an ASP.NET Core application.
     Requested: 9.0.0
     Latest:    9.0.1  (Outdated)
     Deprecated: No
@@ -250,26 +255,34 @@ Framework: net9.0
 • Newtonsoft.Json (12.0.3)
     Gallery URL: https://www.nuget.org/packages/Newtonsoft.Json/12.0.3
     Project URL: https://www.newtonsoft.com/json
+    Catalog URL: https://api.nuget.org/v3/catalog0/data/2020.06.27.11.04.28/newtonsoft.json.12.0.3.json
+    Description: Json.NET is a popular high-performance JSON framework for .NET
     Requested: 12.0.3
     Latest:    13.0.3  (Outdated)
     Deprecated: Yes (Legacy package)
+      Message: Consider migrating to System.Text.Json for better performance
       Alternative: System.Text.Json >=8.0.0
     Vulnerabilities: None
 
-• VulnerablePackage (1.0.0)
-    Gallery URL: https://www.nuget.org/packages/VulnerablePackage/1.0.0
-    Requested: 1.0.0
-    Latest:    1.2.1  (Outdated)
-    Deprecated: No
-    Vulnerabilities:
-      - High: https://github.com/advisories/GHSA-5crp-9r3c-p9vr
-      - Medium: https://nvd.nist.gov/vuln/detail/CVE-2023-1234
+• Microsoft.Data.SqlClient (4.1.1)
+    Gallery URL: https://www.nuget.org/packages/Microsoft.Data.SqlClient/4.1.1
+    Project URL: https://aka.ms/sqlclientproject
+    Catalog URL: https://api.nuget.org/v3/catalog0/data/2024.01.09.20.50.29/microsoft.data.sqlclient.4.1.1.json
+    Description: Provides the data provider for SQL Server. These classes provide access to versions of SQL Server
+    Requested: 4.1.1
+    Latest:    6.0.2  (Outdated)
+    Deprecated: Yes (CriticalBugs)
+      Message: An important security issue exists in this version of the package. It is recommended to update to a newer version.
+https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-0056
+    Vulnerabilities: None
 
 • System.CommandLine (2.0.0-beta4.22272.1)
     Gallery URL: https://www.nuget.org/packages/System.CommandLine/2.0.0-beta4.22272.1
     Project URL: https://github.com/dotnet/command-line-api
+    Catalog URL: https://api.nuget.org/v3/catalog0/data/2022.06.02.17.01.24/system.commandline.2.0.0-beta4.22272.1.json
+    Description: This package includes a powerful command line parser and other tools for building command line apps
     Requested: 2.0.0-beta4.22272.1
-    Latest:    Unknown (Pre-release version - stable version may not be available)
+    Latest:    2.0.0-beta4.22272.1  (Current)
     Deprecated: No
     Vulnerabilities: None
 
@@ -473,6 +486,9 @@ This provides:
 - [x] JSON configuration file support with schema validation
 - [x] Security-focused filtering options
 - [x] Complete test suite with high coverage
+- [x] Enhanced deprecation information from both CLI and API sources
+- [x] Package descriptions and catalog URLs from NuGet API
+- [x] Baseline report integration for complete package detection
 
 ### 🚧 **In Progress (v1.1)**
 
