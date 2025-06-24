@@ -5,7 +5,8 @@ WORKDIR /src
 
 # Copy project file and restore dependencies
 COPY ["NuGetInspectorApp/NuGetInspectorApp.csproj", "NuGetInspectorApp/"]
-RUN dotnet restore "NuGetInspectorApp/NuGetInspectorApp.csproj"
+# ✅ Fix: Restore with the target runtime identifier
+RUN dotnet restore "NuGetInspectorApp/NuGetInspectorApp.csproj" --runtime linux-x64
 
 # Copy source code and build
 COPY . .

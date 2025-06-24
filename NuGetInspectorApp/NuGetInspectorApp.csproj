@@ -7,6 +7,9 @@
         <Nullable>enable</Nullable>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
 
+        <!-- ✅ Runtime identifiers for Docker builds -->
+        <RuntimeIdentifiers>win-x64;linux-x64;osx-x64</RuntimeIdentifiers>
+
         <!-- ✅ Trimming and AOT Settings -->
         <PublishAot>false</PublishAot>
         <PublishSingleFile>true</PublishSingleFile>
