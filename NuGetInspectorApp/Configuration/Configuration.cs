@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using NuGetInspectorApp.Configuration;
 
 namespace NuGetInspectorApp.Configuration;
 
@@ -131,11 +132,11 @@ public class AppSettings
         // Default config file locations to check (in order of preference)
         var configPaths = new[]
         {
-            configPath, // User-specified path
-            ".nugetinspector", // Current directory
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nugetinspector"), // User home
-            Path.Combine(Environment.CurrentDirectory, ".nugetinspector") // Current working directory
-        }.Where(p => !string.IsNullOrEmpty(p) && File.Exists(p));
+        configPath, // User-specified path
+        ".nugetinspector", // Current directory
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nugetinspector"), // User home
+        Path.Combine(Environment.CurrentDirectory, ".nugetinspector") // Current working directory
+    }.Where(p => !string.IsNullOrEmpty(p) && File.Exists(p));
 
         var configFile = configPaths.FirstOrDefault();
         if (configFile == null)
@@ -151,15 +152,8 @@ public class AppSettings
         {
             var json = File.ReadAllText(configFile);
 
-            // Configure JSON options for robust parsing
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-                AllowTrailingCommas = true,
-                ReadCommentHandling = JsonCommentHandling.Skip
-            };
-
-            var config = JsonSerializer.Deserialize<NuGetInspectorConfig>(json, options);
+            // ✅ Use source-generated JSON context for AOT/trimming compatibility
+            var config = JsonSerializer.Deserialize(json, NuGetInspectorJsonContext.Default.NuGetInspectorConfig);
 
             if (config != null)
             {

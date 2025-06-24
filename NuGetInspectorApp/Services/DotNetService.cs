@@ -1,8 +1,9 @@
-using Microsoft.Extensions.Logging;
-using NuGetInspectorApp.Models;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using NuGetInspectorApp.Configuration;
+using NuGetInspectorApp.Models;
 
 namespace NuGetInspectorApp.Services;
 
@@ -50,21 +51,44 @@ public class DotNetService : IDotNetService
     /// <exception cref="ArgumentException">Thrown when <paramref name="solutionPath"/> or <paramref name="reportType"/> is null or empty.</exception>
     public async Task<DotNetListReport?> GetPackageReportAsync(string solutionPath, string reportType, CancellationToken cancellationToken = default)
     {
-        var json = await RunDotnetListJSONAsync(solutionPath, reportType, cancellationToken);
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            _logger.LogWarning($"dotnet list package {reportType} returned empty output");
-            return null;
-        }
+        if (string.IsNullOrWhiteSpace(solutionPath))
+            throw new ArgumentException("Solution path cannot be null or empty", nameof(solutionPath));
 
         try
         {
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            return JsonSerializer.Deserialize<DotNetListReport>(json, options);
+            var jsonOutput = await RunDotnetListJSONAsync(solutionPath, reportType, cancellationToken);
+            if (string.IsNullOrWhiteSpace(jsonOutput))
+            {
+                _logger.LogWarning("dotnet list package {ReportType} returned empty output for {SolutionPath}", reportType, solutionPath);
+                return null;
+            }
+
+            // ✅ Use source-generated JSON context for AOT/trimming compatibility
+            var report = JsonSerializer.Deserialize(jsonOutput, NuGetInspectorJsonContext.Default.DotNetListReport);
+
+            if (report == null)
+            {
+                _logger.LogError("Failed to deserialize dotnet list output for {ReportType}", reportType);
+                return null;
+            }
+
+            _logger.LogDebug("Successfully parsed {ReportType} report with {ProjectCount} projects",
+                reportType, report.Projects?.Count ?? 0);
+            return report;
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
-            _logger.LogError($"Failed to deserialize dotnet list output for {reportType}");
+            _logger.LogError(ex, "JSON deserialization failed for {ReportType} report: {Message}", reportType, ex.Message);
+            return null;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("dotnet list package {ReportType} operation was cancelled", reportType);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during {ReportType} report generation: {Message}", reportType, ex.Message);
             return null;
         }
     }

@@ -7,6 +7,16 @@
         <Nullable>enable</Nullable>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
 
+        <!-- ✅ Trimming and AOT Settings -->
+        <PublishAot>false</PublishAot>
+        <PublishSingleFile>true</PublishSingleFile>
+        <PublishTrimmed>true</PublishTrimmed>
+        <TrimMode>link</TrimMode>
+        <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
+
+        <!-- ✅ Enable JSON source generation -->
+        <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+
         <!-- Assembly Information -->
         <AssemblyTitle>NuGet Inspector</AssemblyTitle>
         <AssemblyDescription>A comprehensive tool for analyzing NuGet packages in .NET solutions</AssemblyDescription>
